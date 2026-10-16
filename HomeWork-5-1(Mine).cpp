@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <stdexcept>
 
 using namespace std;
 
@@ -20,7 +21,7 @@ int main()
         int num2 = stoi(b, &pos2);
         if (pos1 != a.size() || pos2 != b.size())
         {
-            cout << " error! input integer plz " << endl;
+            throw invalid_argument("error! input integer plz");
         }else 
         {
             switch (op)
@@ -39,7 +40,7 @@ int main()
                 case '/':
                     if (num2 == 0)
                     {
-                        cout << "error! divide by zero" << endl;
+                        throw runtime_error("error! divide by zero");
                     }
                     else
                     {
@@ -53,13 +54,20 @@ int main()
         }
         
     }
-    catch (const invalid_argument&)
+    catch (const invalid_argument& e)
     {
-        cout << "error! input integer plz" << endl;
+        cerr << e.what() << endl;
+        return 1;
     }
-    catch (const out_of_range&)
+    catch (const out_of_range& e)
     {
-        cout << "error! number is too large" << endl;
+        cerr << "error! number is too large: " << e.what() << endl;
+        return 1;
+    }
+    catch (const runtime_error& e)
+    {
+        cerr << e.what() << endl;
+        return 1;
     }
 
     return 0;
