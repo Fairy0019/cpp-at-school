@@ -20,6 +20,7 @@ public:
 private:
     void showTitleScreen() const;
     void showPrologueScreen() const;
+    bool showStoryBeat();
     bool startFromGate();
     void renderRoad() const;
     void showRoadLeaveScreen() const;
@@ -40,6 +41,7 @@ private:
     void renderCamp(const std::string& message) const;
     void renderTravel(int progress, int playerColumn) const;
     void animateWalk(int fromColumn, int toColumn, int progress) const;
+    void triggerTravelDisaster();
     void showStatusScreen() const;
     void showShop();
     void showInventoryScreen();
@@ -56,4 +58,5 @@ private:
     void renderFarewell(const std::string& warning) const;
 
     Player player_;
+    int storyStage_;
 };

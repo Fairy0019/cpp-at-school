@@ -12,15 +12,13 @@ const std::vector<std::string> kRat = {
 // 史莱姆：身体中间直接写元素。
 const std::vector<std::string> kWaterSlime = {
     "   .-~~~-.",
-    "  (  水  )",
-    "   `-...-'"
-};
+    "  (o 水 o )",
+    "   `-...-'"};
 
 const std::vector<std::string> kFireSlime = {
     "   .-~~~-.",
-    "  (  火  )",
-    "   `-...-'"
-};
+    "  (o 火 o )",
+    "   `-...-'"};
 
 // 哥布林：尖耳朵、单眼、短腿。
 const std::vector<std::string> kGoblin = {

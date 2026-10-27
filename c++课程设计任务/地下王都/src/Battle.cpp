@@ -1,5 +1,6 @@
 #include "Battle.h"
 
+#include "DisasterVisual.h"
 #include "Frame.h"
 #include "MonsterVisual.h"
 #include "PlayerSprite.h"
@@ -17,9 +18,13 @@ constexpr int kRightCardWidth = 32;
 
 }  // namespace
 
-Battle::Battle(Player& player)
+Battle::Battle(Player& player, int storyStage)
     : player_(player),
-      turn_(1) {
+      turn_(1),
+      storyStage_(storyStage),
+      disasterCountdown_(Random::integer(2, 4)),
+      hasDisaster_(false),
+      disasterType_(DisasterType::Snow) {
 }
 
 void Battle::addLog(const std::string& message) {
@@ -36,7 +41,10 @@ void Battle::render(const Monster& monster, bool battleEnded) const {
 
     frame.addColumns(
         UI::paint("地下遗迹 | 遭遇战", UI::Color::BrightCyan),
-        UI::paint("回合 " + std::to_string(turn_), UI::Color::Gray),
+        UI::paint("回合 " + std::to_string(turn_) +
+                  (hasDisaster_ ? " · " + disasterName_ : ""),
+                  hasDisaster_ ? DisasterVisual::tint(disasterType_)
+                               : UI::Color::Gray),
         40);
     frame.addDivider();
     frame.addBlank();
@@ -231,6 +239,48 @@ BattleResult Battle::fight(Monster& monster) {
     while (player_.isAlive() && monster.isAlive()) {
         // 防御姿态只持续到玩家下一次行动之前。
         player_.setDefending(false);
+
+        if (--disasterCountdown_ <= 0) {
+            disasterCountdown_ = Random::integer(2, 4);
+            const DisasterEvent event = Disaster::generate(storyStage_);
+            hasDisaster_ = true;
+            disasterType_ = event.type;
+            disasterName_ = event.name;
+
+            const int playerDamage = player_.takeDamage(event.hpDamage);
+            const int monsterDamage = monster.takeDamage(event.hpDamage);
+            int mpLost = 0;
+            if (event.mpDamage > 0) {
+                mpLost = std::min(event.mpDamage, player_.getMp());
+                if (mpLost > 0) {
+                    player_.spendMp(mpLost);
+                }
+            }
+
+            std::string disasterLog = "天灾·" + event.name + "：" + event.description +
+                                      "（你 -" + std::to_string(playerDamage) + " HP";
+            if (monsterDamage > 0) {
+                disasterLog += "，" + monster.getName() + " -" +
+                               std::to_string(monsterDamage) + " HP";
+            }
+            if (mpLost > 0) {
+                disasterLog += "，MP -" + std::to_string(mpLost);
+            }
+            disasterLog += "）";
+            addLog(disasterLog);
+
+            if (!player_.isAlive()) {
+                addLog("你在天灾中倒下了。");
+                render(monster, true);
+                return BattleResult::Defeat;
+            }
+            if (!monster.isAlive()) {
+                addLog(monster.getName() + " 在天灾中倒下了。");
+                render(monster, true);
+                return BattleResult::Victory;
+            }
+        }
+
         render(monster);
 
         int choice = UI::readChoice(UI::paint("  选择 > ", UI::Color::BrightGreen), 0, 5);

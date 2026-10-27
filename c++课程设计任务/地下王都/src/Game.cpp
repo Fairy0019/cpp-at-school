@@ -1,6 +1,8 @@
 #include "Game.h"
 
 #include "Battle.h"
+#include "Disaster.h"
+#include "DisasterVisual.h"
 #include "Frame.h"
 #include "Item.h"
 #include "Monster.h"
@@ -16,6 +18,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -23,6 +26,27 @@
 #include <vector>
 
 namespace {
+
+constexpr const char* kStoryProgressFile = "story_progress.sav";
+constexpr int kStoryClueCount = 8;
+
+int loadStoryStage(const std::string& playerName) {
+    std::ifstream input(kStoryProgressFile);
+    std::string savedName;
+    int stage = 0;
+    if (!std::getline(input, savedName) || savedName != "name=" + playerName ||
+        !(input >> stage) || stage < 0 || stage > kStoryClueCount + 1) {
+        return 0;
+    }
+    return stage;
+}
+
+void saveStoryStage(const std::string& playerName, int stage) {
+    std::ofstream output(kStoryProgressFile, std::ios::out | std::ios::trunc);
+    if (output) {
+        output << "name=" << playerName << "\n" << stage << "\n";
+    }
+}
 
 std::string atColumn(const std::string& text, int column) {
     if (column <= 0) {
@@ -65,11 +89,11 @@ std::string repeatText(const std::string& unit, int count) {
 std::string travelFlavor(int progress) {
     switch (progress) {
         case 1:
-            return "你举着火把，沿着湿滑的石阶向下走。\n火光照不出三步远，黑暗里只有水滴声。";
+            return "你举着火把，沿着湿滑的石阶向下走。\n胸口传来微弱的刺痛，像有什么东西在黑暗里回应。";
         case 2:
-            return "墙上刻着模糊的纹章。\n黑暗深处，传来细碎的抓挠声。";
+            return "墙上刻着模糊的旧王都纹章，边缘覆着一层薄霜。\n这里明明没有通向地面的风。";
         case 3:
-            return "半塌的木门挡在走廊尽头。\n门后传来湿黏的蠕动声，或者别的什么。";
+            return "半塌的木门挡在走廊尽头。\n门后的石墙留着焦痕，地面却仍在轻轻震动。";
         default:
             return "你继续向遗迹深处走去。";
     }
@@ -132,7 +156,7 @@ std::string cardLine(const std::string& text) {
 }  // namespace
 
 Game::Game()
-    : player_("旅人") {
+    : player_("旅人"), storyStage_(0) {
     // 真正的初始物品在城门登记新身份时发放。
 }
 
@@ -143,6 +167,8 @@ void Game::run() {
     if (!startFromGate()) {
         return;
     }
+
+    storyStage_ = loadStoryStage(player_.getName());
 
     showCityEntryNarration();
 
@@ -264,10 +290,12 @@ void Game::showPrologueScreen() const {
 
     Frame frame;
     frame.addBlank();
-    frame.addCentered(UI::paint("你随着路标来到了这里。", UI::Color::BrightCyan));
+    frame.addCentered(UI::paint("那场灾难之后，你开始听见地底的回声。", UI::Color::BrightCyan));
     frame.addBlank();
-    frame.addCentered("荒芜，像是时间之外的地方。");
-    frame.addCentered("实际上，你连自己是谁也忘了。");
+    frame.addCentered("不合时令的雪落下，地面随后震动，远处又映出火光。");
+    frame.addCentered("你在混乱中受了伤。昏迷时，梦见一座沉入地下的王都。");
+    frame.addCentered("醒来后，旧身份证明已经在灾害中遗失。");
+    frame.addCentered("你只记得一个方向，和一段不属于自己的回声。");
     frame.addBlank();
     frame.render();
 
@@ -334,8 +362,8 @@ void Game::renderRoad() const {
         UI::paint("城门", UI::Color::Yellow), 50));
 
     frame.addBlank();
-    frame.addWrapped("风卷着灰烬吹过荒路。城门半塌，门后没有灯。", "  ");
-    frame.addWrapped("城门边立着一个残破的机械，看不出是哪个年代的遗物了。", "  ");
+    frame.addWrapped("风卷着灰烬吹过荒路。这里刚经历过一场无法解释的灾变。", "  ");
+    frame.addWrapped("城门半塌，门后没有灯。一个残破的机械仍守着入口。", "  ");
     frame.addBlank();
     frame.addDivider();
     frame.addLine(
@@ -418,7 +446,7 @@ void Game::renderGate(const SaveSummary& summary, const std::string& message,
     std::string cardGold;
 
     if (summary.valid) {
-        cardStatus = "有效";
+        cardStatus = "临时";
         cardName = summary.name;
         cardGender = summary.gender;
         cardSpecies = summary.species;
@@ -503,22 +531,22 @@ void Game::renderGate(const SaveSummary& summary, const std::string& message,
 std::vector<std::string> Game::gateDialogue(const SaveSummary& summary) const {
     if (summary.valid) {
         return {
-            "机械门卫：>「请出示身份牌」<",
-            "「你或许需要一个新的身份牌。」",
-            "「出示身份牌，我就放你进去。」"
+            "机械门卫：>「出示临时身份牌」<",
+            "「你的旧身份证明缺失，这张牌子只能保证你进城。」",
+            "「出示它，我就放你进去。」"
         };
     }
     if (summary.fileExists) {
         return {
-            "机械门卫：>「身份牌损坏」<",
-            "「你或许需要一个新的身份牌。」",
-            "「重新登记一个名字吧。」"
+            "机械门卫：>「临时身份牌损坏」<",
+            "「你只能重新登记一个临时身份。」",
+            "「这次别再弄丢了。」"
         };
     }
     return {
         "机械门卫：>「没有身份牌」<",
-        "「你或许需要一个新的身份牌。」",
-        "「登记一个名字，从今以后那就是你。」"
+        "「旧身份证明缺失。登记一个临时身份。」",
+        "「名字、性别、物种由你自报。」"
     };
 }
 
@@ -553,6 +581,8 @@ bool Game::registerNewIdentity(std::string& message) {
         message = "登记失败：" + error;
         return false;
     }
+
+    saveStoryStage(newPlayer.getName(), 0);
 
     player_ = std::move(newPlayer);
     return true;
@@ -666,8 +696,9 @@ void Game::showCityEntryNarration() const {
     frame.addBlank();
     frame.addCentered(UI::paint("城门在你身后合拢。", UI::Color::BrightCyan));
     frame.addBlank();
-    frame.addCentered("街上的人都低着头。他们都没有脸。");
-    frame.addCentered("没有人看你，只有胸前的身份牌在发凉。");
+    frame.addCentered("街上留着低头行走的人影，看不清脸，像凝固的最后一幕。");
+    frame.addCentered("这里的人用身份牌代替脸。假身份、抢劫和失踪，都没人过问。");
+    frame.addCentered("门卫的识别声已停，胸前的临时身份牌却仍透着凉意。");
     frame.addBlank();
     frame.addCentered(UI::paint(player_.getName() + "，欢迎来到沉没的王都。",
                                 UI::Color::BrightYellow));
@@ -701,12 +732,101 @@ void Game::showEnterRuinsCutscene() const {
     }
 
     frame.addBlank();
-    frame.addCentered("潮湿的冷风从地底吹来，火把猛地一晃。");
-    frame.addCentered("你沿着石阶，走进沉没的王都。");
+    frame.addCentered("潮湿的冷风从地底吹来，火把猛地朝深处倾斜。");
+    frame.addCentered("那阵熟悉的回声再次响起。你沿石阶走进沉没的王都。");
     frame.addBlank();
     frame.render();
 
     UI::waitForEnter(UI::paint("  按回车继续 > ", UI::Color::BrightGreen));
+}
+
+bool Game::showStoryBeat() {
+    static const std::vector<std::vector<std::string>> clues = {
+        {"你停在一面裂开的石墙前。指尖触到纹路时，胸口的疼痛忽然与地下的震动重合。",
+         "这不是一句话，更像一段断续的求援信号。你不知道它来自哪里。"},
+        {"旧粮仓的墙上刻着灾后记录：盛夏降雪，粮食冻结，城门封闭。",
+         "几份记录的日期彼此不相邻，也找不到固定间隔。雪灾从未按季节或周期到来。"},
+        {"观测站的地图把裂缝标向城市地下深处。震动先从那里出现，再向街区扩散。",
+         "旧记录称地脉压力正在升高，却没有人知道是什么推动着它。"},
+        {"焦黑的工坊里，烧熔的管道通向一座被封住的核心设施。残存铭文写着：地心炉。",
+         "旧王朝曾用它引导地脉能源。记录同时警告，炉心的热量与压力无法稳定控制。"},
+        {"一页王室日志写道：发明者本人下令停止扩建，并亲自进入核心区域。",
+         "最后一条完整记录只有一句：‘炉火已熄。不要让后来者重新点燃它。’"},
+        {"你把三处灾区的记录按时间拼在一起：寒冷、震动、火焰都从地下设施异常后出现。",
+         "灾难的间隔并不固定。新王国的文书只记载救灾和撤离，没有提到地心炉——他们并不知道它存在。"},
+        {"一道石门后，四尊骑士形态的守护机械仍在巡行。它们并不追逐地表的人，只阻挡通向核心的道路。",
+         "旧刻文记录了控制、防卫、配给与封存四种职责。后世把这些身影称为天启四骑士。"},
+        {"核心门前的识别装置终于读取出完整档案：你是那位国王的后裔。",
+         "地心炉没有意志。封存结构受损后，它只是沿着国王留下的血脉权限发出求援信号。你继承的是进入核心的资格，不是必须服从的命令。"}
+    };
+
+    if (storyStage_ < kStoryClueCount) {
+        UI::clearScreen();
+        Frame frame;
+        frame.addBlank();
+        frame.addCentered(UI::paint("遗迹记录 · " + std::to_string(storyStage_ + 1) +
+                                    "/" + std::to_string(kStoryClueCount),
+                                    UI::Color::BrightCyan));
+        frame.addBlank();
+        for (const std::string& line : clues[static_cast<std::size_t>(storyStage_)]) {
+            frame.addWrapped(line, "  ");
+            frame.addBlank();
+        }
+        frame.render();
+        UI::waitForEnter(UI::paint("  按回车继续探索 > ", UI::Color::BrightGreen));
+        ++storyStage_;
+        saveStoryStage(player_.getName(), storyStage_);
+        return false;
+    }
+
+    if (storyStage_ == kStoryClueCount) {
+        UI::clearScreen();
+        Frame frame;
+        frame.addBlank();
+        frame.addCentered(UI::paint("地心炉 · 最后的选择", UI::Color::BrightYellow, true));
+        frame.addBlank();
+        frame.addWrapped("炉心仍在紊乱。先祖曾选择熄灭它，但那是他的决定。现在，选择权在你手中。", "  ");
+        frame.addBlank();
+        frame.addLine("[1] 再次熄灭炉心：止住灾害，封存王都");
+        frame.addLine("[2] 尝试稳定炉心：保留遗迹，但需要持续维护");
+        frame.addLine("[3] 摧毁炉心：彻底断绝风险，承受最后一次地震");
+        frame.addLine("[4] 拒绝介入：离开核心，未来仍可能再次失控");
+        frame.addLine("[0] 暂时离开");
+        frame.addBlank();
+        frame.render();
+
+        const int choice = UI::readChoice(
+            UI::paint("  选择 > ", UI::Color::BrightGreen), 0, 4);
+        if (choice == 0 || choice == -1) {
+            return true;
+        }
+
+        std::vector<std::string> ending;
+        switch (choice) {
+            case 1:
+                ending = {"你执行了熄灭程序。炉心的脉动渐渐停下，四尊守护机械也垂下了头。",
+                          "沉没王都仍留在地下，但三灾不再从这里醒来。"};
+                break;
+            case 2:
+                ending = {"你降低炉心输出，重新接上部分封存结构。震动暂时平息，核心仍需要有人维护。",
+                          "你决定带着这段历史回到营地，与其他人商量接下来的守护方式。"};
+                break;
+            case 3:
+                ending = {"你破坏了核心。最后一次震动撕开地层，旧王都的深处彻底坍塌。",
+                          "炉心不再运行，代价是这座城市与它的秘密一同埋入黑暗。"};
+                break;
+            default:
+                ending = {"你转身离开，没有替血脉或先祖作出决定。",
+                          "召唤声渐远，但炉心的故障尚未解决。未来仍留着不确定的回响。"};
+                break;
+        }
+        storyStage_ = kStoryClueCount + 1;
+        saveStoryStage(player_.getName(), storyStage_);
+        showResult("旅  程  终  章", ending, UI::Color::BrightYellow);
+        return true;
+    }
+
+    return false;
 }
 
 void Game::renderCamp(const std::string& message) const {
@@ -832,6 +952,47 @@ void Game::animateWalk(int fromColumn, int toColumn, int progress) const {
         renderTravel(progress, column);
         UI::sleepFor(65);
     }
+}
+
+void Game::triggerTravelDisaster() {
+    const DisasterEvent event = Disaster::generate(storyStage_);
+
+    const int hpBefore = player_.getHp();
+    const int damage = std::min(event.hpDamage, std::max(0, hpBefore - 1));
+    const int hpLost = player_.takeDamage(damage);
+
+    int mpLost = 0;
+    if (event.mpDamage > 0) {
+        mpLost = std::min(event.mpDamage, player_.getMp());
+        if (mpLost > 0) {
+            player_.spendMp(mpLost);
+        }
+    }
+
+    UI::clearScreen();
+
+    Frame frame;
+    frame.addBlank();
+    frame.addCentered(UI::paint("天灾 · " + event.name,
+                                DisasterVisual::tint(event.type), true));
+    frame.addBlank();
+    frame.addWrapped(event.description, "  ");
+    frame.addBlank();
+
+    std::string loss = "你损失了 " + std::to_string(hpLost) + " 点 HP";
+    if (mpLost > 0) {
+        loss += "，" + std::to_string(mpLost) + " 点 MP";
+    }
+    loss += "。";
+    frame.addCentered(loss);
+    if (hpLost == 0) {
+        frame.addCentered("你勉强撑住了。");
+    }
+
+    frame.addBlank();
+    frame.render();
+
+    UI::waitForEnter(UI::paint("  按回车继续 > ", UI::Color::BrightGreen));
 }
 
 void Game::showStatusScreen() const {
@@ -1243,10 +1404,15 @@ void Game::showResult(const std::string& title,
 
 std::string Game::explore() {
     showEnterRuinsCutscene();
+    if (showStoryBeat()) {
+        showReturnCutscene();
+        return "你离开了核心区域，回到营地。地心炉的回声仍在身后。";
+    }
 
     int progress = 1;
     int playerColumn = 8;
     std::unique_ptr<Monster> monster;
+    bool disasterShown = false;
 
     while (true) {
         renderTravel(progress, playerColumn);
@@ -1266,17 +1432,25 @@ std::string Game::explore() {
             animateWalk(playerColumn, targetColumn, progress);
             playerColumn = targetColumn;
             ++progress;
+            if (!disasterShown && Random::chance(0.45)) {
+                triggerTravelDisaster();
+                disasterShown = true;
+            }
         } else {
             animateWalk(playerColumn, 46, progress);
             playerColumn = 46;
             UI::sleepFor(200);
+            if (!disasterShown) {
+                triggerTravelDisaster();
+                disasterShown = true;
+            }
             monster = createRandomMonster();
             showEncounterCutscene(*monster);
             break;
         }
     }
 
-    Battle battle(player_);
+    Battle battle(player_, storyStage_);
     const BattleResult result = battle.fight(*monster);
 
     if (result == BattleResult::Victory) {
@@ -1337,7 +1511,7 @@ void Game::renderFarewell(const std::string& warning) const {
     frame.addCentered(UI::paint("旅  程  暂  告  一  段  落", UI::Color::BrightYellow, true));
     frame.addBlank();
     frame.addCentered("你离开了沉没王都。");
-    frame.addCentered("雪还在下，真相仍在地底等待。");
+    frame.addCentered("灰烬仍浮在风中，王都的回声渐渐远去。");
     frame.addBlank();
     frame.addCentered("最终等级 Lv." + std::to_string(player_.getLevel()) +
                       "    金币 " + std::to_string(player_.getGold()));
