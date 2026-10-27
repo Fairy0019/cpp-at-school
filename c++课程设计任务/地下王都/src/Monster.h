@@ -30,6 +30,10 @@ public:
     virtual const std::vector<std::string>& getArt() const = 0;
     virtual std::string getEncounterText() const = 0;
     virtual MonsterColor getColor() const = 0;
+    virtual std::string getBattleTitle() const;
+
+    // 守护者战使用不同的战斗标题，并允许剧情层区分首领。
+    virtual bool isBoss() const;
 
     // 默认不掉落；具体怪物重写。
     virtual std::unique_ptr<Item> rollDrop() const;

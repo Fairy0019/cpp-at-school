@@ -62,6 +62,45 @@ const std::vector<std::string> kGatekeeper = {
     "       / \\"
 };
 
+// 营地里的灰袍幸存者：帽檐下没有脸，只有一块磨白的身份牌。
+const std::vector<std::string> kSurvivor = {
+    "    ┌───┐",
+    "    │   │",
+    "    └─┬─┘",
+    "   / 灰 \\",
+    "     / \\"
+};
+
+// 封存骑士：四守护单元中最后仍在执行命令的一尊。
+const std::vector<std::string> kGuardian = {
+    "     ┌─────┐",
+    "   ┌─┤ 封  ├─┐",
+    "   │ └──┬──┘ │",
+    "   │  骑士  │",
+    "   └──┬───┬─┘",
+    "     /     \\"
+};
+
+// 奖励房间里的宝箱：盖子、锁扣和旧木纹。
+const std::vector<std::string> kChest = {
+    "    ┌──────┐",
+    "   ┌┴──────┴┐",
+    "   │  宝箱  │",
+    "   ├───┬────┤",
+    "   │  锁    │",
+    "   └────────┘"
+};
+
+// 宝箱怪：宝箱张开后露出的牙齿。
+const std::vector<std::string> kMimic = {
+    "    ┌──────┐",
+    "   ┌┴┬─┬─┬─┴┐",
+    "   │ 宝 箱  │",
+    "   ├─┴─┴─┴──┤",
+    "   │ 牙 牙  │",
+    "   └────────┘"
+};
+
 }  // namespace
 
 namespace Sprites {
@@ -96,6 +135,22 @@ const std::vector<std::string>& merchant() {
 
 const std::vector<std::string>& gatekeeper() {
     return kGatekeeper;
+}
+
+const std::vector<std::string>& survivor() {
+    return kSurvivor;
+}
+
+const std::vector<std::string>& guardian() {
+    return kGuardian;
+}
+
+const std::vector<std::string>& chest() {
+    return kChest;
+}
+
+const std::vector<std::string>& mimic() {
+    return kMimic;
 }
 
 }  // namespace Sprites

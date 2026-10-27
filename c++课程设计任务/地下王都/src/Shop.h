@@ -11,6 +11,7 @@
 class Shop {
 public:
     Shop();
+    explicit Shop(int itemCount, double priceScale = 1.0);
 
     int size() const;
 

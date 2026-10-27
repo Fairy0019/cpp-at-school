@@ -22,6 +22,14 @@ int Monster::getGoldReward() const {
     return goldReward_;
 }
 
+std::string Monster::getBattleTitle() const {
+    return "地下遗迹 | 遭遇战";
+}
+
+bool Monster::isBoss() const {
+    return false;
+}
+
 std::unique_ptr<Item> Monster::rollDrop() const {
     return nullptr;
 }

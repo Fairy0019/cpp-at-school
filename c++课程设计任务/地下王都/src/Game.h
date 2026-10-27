@@ -35,17 +35,29 @@ private:
     void showCityEntryNarration() const;
 
     void showEnterRuinsCutscene() const;
+    void showAreaIntro(int stage) const;
     void showEncounterCutscene(const Monster& monster) const;
     std::unique_ptr<Monster> createRandomMonster() const;
+    std::unique_ptr<Monster> createGuardian() const;
+    std::unique_ptr<Monster> createMimic() const;
+    std::string showRewardRoom();
+    void grantChestLoot(std::vector<std::string>& lines);
     void showReturnCutscene() const;
+    void showCoreSealedScene() const;
+    bool enterCore();
+    void showEnding(int choice) const;
     void renderCamp(const std::string& message) const;
+    void showCampTalk();
     void renderTravel(int progress, int playerColumn) const;
     void animateWalk(int fromColumn, int toColumn, int progress) const;
     void triggerTravelDisaster();
     void showStatusScreen() const;
     void showShop();
+    void showTrader();
+    void showShopScreen(bool full);
+    void refreshCampShop();
     void showInventoryScreen();
-    void renderShop(const Shop& shop, const std::string& message) const;
+    void renderShop(const Shop& shop, const std::string& message, bool full) const;
     void renderInventory(const std::string& title,
                          const std::string& message,
                          bool selling) const;
@@ -59,4 +71,6 @@ private:
 
     Player player_;
     int storyStage_;
+    int storyEnding_;
+    bool shopAvailable_;
 };

@@ -15,5 +15,9 @@ const std::vector<std::string>& door();
 const std::vector<std::string>& campfire();
 const std::vector<std::string>& merchant();
 const std::vector<std::string>& gatekeeper();
+const std::vector<std::string>& survivor();
+const std::vector<std::string>& guardian();
+const std::vector<std::string>& chest();
+const std::vector<std::string>& mimic();
 
 }  // namespace Sprites

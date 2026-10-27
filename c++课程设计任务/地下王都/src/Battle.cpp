@@ -40,7 +40,7 @@ void Battle::render(const Monster& monster, bool battleEnded) const {
     Frame frame;
 
     frame.addColumns(
-        UI::paint("地下遗迹 | 遭遇战", UI::Color::BrightCyan),
+        UI::paint(monster.getBattleTitle(), UI::Color::BrightCyan),
         UI::paint("回合 " + std::to_string(turn_) +
                   (hasDisaster_ ? " · " + disasterName_ : ""),
                   hasDisaster_ ? DisasterVisual::tint(disasterType_)
@@ -293,7 +293,9 @@ BattleResult Battle::fight(Monster& monster) {
         switch (choice) {
             case 0:
                 if (Random::chance(0.7)) {
-                    addLog("你趁乱退回了营地。");
+                    addLog(monster.isBoss()
+                               ? "你退回回廊。封存骑士没有追来，它只守住核心的门。"
+                               : "你趁乱退回了营地。");
                     render(monster, true);
                     return BattleResult::Escaped;
                 }
