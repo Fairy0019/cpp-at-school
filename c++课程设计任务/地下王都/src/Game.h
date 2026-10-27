@@ -24,8 +24,9 @@ private:
     void renderRoad() const;
     void showRoadLeaveScreen() const;
     bool showGatekeeper();
+    std::vector<std::string> gateDialogue(const SaveSummary& summary) const;
     void renderGate(const SaveSummary& summary, const std::string& message,
-                    int visibleDialogueLines = 3) const;
+                    const std::string& dialogueLine, bool showMenu) const;
     bool registerNewIdentity(std::string& message);
     std::string readIdentityText(const std::string& prompt, int maxWidth) const;
     bool chooseIdentityGender(std::string& gender) const;

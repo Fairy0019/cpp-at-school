@@ -348,16 +348,15 @@ bool Game::showGatekeeper() {
     std::string message;
 
     const SaveSummary introSummary = SaveGame::peek();
-    if (UI::isInteractive()) {
-        for (int visibleLines = 1; visibleLines <= 3; ++visibleLines) {
-            renderGate(introSummary, "", visibleLines);
-            UI::sleepFor(280);
-        }
+    const std::vector<std::string> dialogue = gateDialogue(introSummary);
+    for (const std::string& line : dialogue) {
+        renderGate(introSummary, "", line, false);
+        UI::waitForEnter(UI::paint("  按回车继续 > ", UI::Color::BrightGreen));
     }
 
     while (true) {
         const SaveSummary summary = SaveGame::peek();
-        renderGate(summary, message);
+        renderGate(summary, message, "", true);
 
         if (summary.valid) {
             const int choice = UI::readChoice(
@@ -400,7 +399,7 @@ bool Game::showGatekeeper() {
 }
 
 void Game::renderGate(const SaveSummary& summary, const std::string& message,
-                      int visibleDialogueLines) const {
+                      const std::string& dialogueLine, bool showMenu) const {
     UI::clearScreen();
 
     Frame frame;
@@ -473,49 +472,54 @@ void Game::renderGate(const SaveSummary& summary, const std::string& message,
     }
 
     frame.addBlank();
-
-    std::vector<std::string> dialogue;
-    if (summary.valid) {
-        dialogue.push_back("机械门卫：>「请出示身份牌」<");
-        dialogue.push_back("「你或许需要一个新的身份牌。」");
-        dialogue.push_back("「出示身份牌，我就放你进去。」");
-    } else if (summary.fileExists) {
-        dialogue.push_back("机械门卫：>「身份牌损坏」<");
-        dialogue.push_back("「你或许需要一个新的身份牌。」");
-        dialogue.push_back("「重新登记一个名字吧。」");
-    } else {
-        dialogue.push_back("机械门卫：>「没有身份牌」<");
-        dialogue.push_back("「你或许需要一个新的身份牌。」");
-        dialogue.push_back("「登记一个名字，从今以后那就是你。」");
+    if (!dialogueLine.empty()) {
+        frame.addWrapped(dialogueLine, "  ");
     }
-
-    const int visible = std::max(0, std::min(visibleDialogueLines,
-                                              static_cast<int>(dialogue.size())));
-    for (int index = 0; index < visible; ++index) {
-        frame.addWrapped(dialogue[static_cast<std::size_t>(index)], "  ");
-    }
-    if (!message.empty() && visible >= static_cast<int>(dialogue.size())) {
+    if (!message.empty()) {
         frame.addWrapped(message, "  ");
     }
-
     frame.addBlank();
     frame.addDivider();
 
-    if (summary.valid) {
-        frame.addLine(
-            UI::paint("[1]", UI::Color::BrightYellow) + " 这是我的身份牌   " +
-            UI::paint("[2]", UI::Color::BrightYellow) + " 不，我忘记了自己是谁   " +
-            UI::paint("[0]", UI::Color::BrightYellow) + " 返回荒路");
-    } else if (summary.fileExists) {
-        frame.addLine(
-            UI::paint("[1]", UI::Color::BrightYellow) + " 重新登记   " +
-            UI::paint("[0]", UI::Color::BrightYellow) + " 返回荒路");
-    } else {
-        frame.addLine(
-            UI::paint("[1]", UI::Color::BrightYellow) + " 登记身份   " +
-            UI::paint("[0]", UI::Color::BrightYellow) + " 返回荒路");
+    if (showMenu) {
+        if (summary.valid) {
+            frame.addLine(
+                UI::paint("[1]", UI::Color::BrightYellow) + " 这是我的身份牌   " +
+                UI::paint("[2]", UI::Color::BrightYellow) + " 不，我忘记了自己是谁   " +
+                UI::paint("[0]", UI::Color::BrightYellow) + " 返回荒路");
+        } else if (summary.fileExists) {
+            frame.addLine(
+                UI::paint("[1]", UI::Color::BrightYellow) + " 重新登记   " +
+                UI::paint("[0]", UI::Color::BrightYellow) + " 返回荒路");
+        } else {
+            frame.addLine(
+                UI::paint("[1]", UI::Color::BrightYellow) + " 登记身份   " +
+                UI::paint("[0]", UI::Color::BrightYellow) + " 返回荒路");
+        }
     }
     frame.render();
+}
+
+std::vector<std::string> Game::gateDialogue(const SaveSummary& summary) const {
+    if (summary.valid) {
+        return {
+            "机械门卫：>「请出示身份牌」<",
+            "「你或许需要一个新的身份牌。」",
+            "「出示身份牌，我就放你进去。」"
+        };
+    }
+    if (summary.fileExists) {
+        return {
+            "机械门卫：>「身份牌损坏」<",
+            "「你或许需要一个新的身份牌。」",
+            "「重新登记一个名字吧。」"
+        };
+    }
+    return {
+        "机械门卫：>「没有身份牌」<",
+        "「你或许需要一个新的身份牌。」",
+        "「登记一个名字，从今以后那就是你。」"
+    };
 }
 
 bool Game::registerNewIdentity(std::string& message) {
