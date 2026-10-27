@@ -39,6 +39,9 @@ void sleepFor(int milliseconds);
 // 给文本着色。颜色未启用时原样返回。
 std::string paint(const std::string& text, Color color, bool bold = false);
 
+// 逐字输出文本；输出被重定向或非交互式控制台时直接输出全文。
+void typeText(const std::string& text, int delayMs = 6);
+
 // 生成进度条，例如 ████████░░░░░░░░。
 std::string bar(int value, int maxValue, int width, Color color);
 

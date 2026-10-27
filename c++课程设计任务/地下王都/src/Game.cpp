@@ -417,7 +417,7 @@ void showStoryPage(const std::string& title,
 
     frame.addBlank();
     frame.addBlank();
-    frame.render();
+    frame.renderTypewriter();
 
     UI::waitForEnter(UI::paint(prompt, UI::Color::BrightGreen));
 }
@@ -525,7 +525,7 @@ std::string cardLine(const std::string& text) {
 
 Game::Game()
     : player_("旅人"), storyStage_(0), storyEnding_(0),
-      shopAvailable_(Random::chance(0.5)) {
+      shopAvailable_(Random::chance(0.5)), resumedFromSave_(false) {
     // 真正的初始物品在城门登记新身份时发放。
 }
 
@@ -541,7 +541,11 @@ void Game::run() {
     storyStage_ = progress.stage;
     storyEnding_ = progress.ending;
 
-    showCityEntryNarration();
+    if (resumedFromSave_) {
+        showReawakening();
+    } else {
+        showCityEntryNarration();
+    }
 
     std::string message;
     if (storyStage_ >= kStoryClueCount + 1) {
@@ -614,53 +618,53 @@ void Game::showTitleScreen() const {
     Frame frame;
     frame.addBlank();
 
-    constexpr int kInnerWidth = 58;
+    constexpr int kInnerWidth = 88;
     const std::string innerTop =
         "╔" + repeatText("═", kInnerWidth - 2) + "╗";
     const std::string innerBlank =
         "║" + std::string(kInnerWidth - 2, ' ') + "║";
     const std::string innerBottom =
-        "╚" + repeatText("═", 15) + "╤" + repeatText("═", 24) +
-        "╤" + repeatText("═", 15) + "╝";
+        "╚" + repeatText("═", 22) + "╤" + repeatText("═", 40) +
+        "╤" + repeatText("═", 22) + "╝";
 
     const auto centerInner = [](const std::string& line) {
         return "   " + line + "   ";
     };
 
-    frame.addLine(UI::fit(UI::paint(centerInner(innerTop), UI::Color::Gray), 64));
-    frame.addLine(UI::fit(UI::paint(centerInner(innerBlank), UI::Color::Gray), 64));
+    frame.addCentered(UI::fit(UI::paint(centerInner(innerTop), UI::Color::Gray), 94));
+    frame.addCentered(UI::fit(UI::paint(centerInner(innerBlank), UI::Color::Gray), 94));
 
     std::string titleLine =
         "   " + UI::paint("║", UI::Color::Gray) +
         UI::padRight(UI::center(UI::paint("沉   没   王   都",
-                                          UI::Color::BrightYellow, true), 56), 56) +
+                                          UI::Color::BrightYellow, true), 86), 86) +
         UI::paint("║", UI::Color::Gray) + "   ";
-    frame.addLine(UI::fit(titleLine, 64));
+    frame.addCentered(UI::fit(titleLine, 94));
 
-    frame.addLine(UI::fit(UI::paint(centerInner(innerBlank), UI::Color::Gray), 64));
-    frame.addLine(UI::fit(UI::paint(centerInner(innerBottom), UI::Color::Gray), 64));
+    frame.addCentered(UI::fit(UI::paint(centerInner(innerBlank), UI::Color::Gray), 94));
+    frame.addCentered(UI::fit(UI::paint(centerInner(innerBottom), UI::Color::Gray), 94));
 
-    frame.addLine(UI::fit(UI::paint(
+    frame.addCentered(UI::fit(UI::paint(
         "     s    ╲                    ╱          ╲              a     ╱",
         UI::Color::Gray), 64));
-    frame.addLine(UI::fit(UI::paint(
+    frame.addCentered(UI::fit(UI::paint(
         "   s ` s   ╲      wera        ╱      x     ╲           aa     ╱",
         UI::Color::Gray), 64));
-    frame.addLine(UI::fit(UI::paint(
+    frame.addCentered(UI::fit(UI::paint(
         "     s      ╲        sdf     ╱       x      ╲            ac  ╱",
         UI::Color::Gray), 64));
 
-    frame.addLine(UI::fit(UI::paint(
+    frame.addCentered(UI::fit(UI::paint(
         "   ══════════    ═══════════════════════════    ══════════",
         UI::Color::Gray), 64));
 
-    frame.addLine(UI::fit(UI::paint(
+    frame.addCentered(UI::fit(UI::paint(
         "        as  ╱           asd  ╲        sss   ╱                ╲",
         UI::Color::Gray), 64));
-    frame.addLine(UI::fit(UI::paint(
+    frame.addCentered(UI::fit(UI::paint(
         "    hf     ╱      adsa        ╲   mki      ╱           o      ╲",
         UI::Color::Gray), 64));
-    frame.addLine(UI::fit(UI::paint(
+    frame.addCentered(UI::fit(UI::paint(
         "          ╱  k          gsw    ╲          ╱             o      ╲",
         UI::Color::Gray), 64));
 
@@ -737,7 +741,7 @@ void Game::showRoadLeaveScreen() const {
     frame.addCentered("你与一些神奇的故事也分开了。");
     frame.addCentered("这似乎是命中注定的。");
     frame.addBlank();
-    frame.render();
+    frame.renderTypewriter();
 
     UI::waitForEnter(UI::paint("  按回车离开 > ", UI::Color::Green));
 }
@@ -749,7 +753,7 @@ void Game::renderRoad() const {
     frame.addColumns(
         UI::paint("城门外 · 荒路", UI::Color::BrightCyan),
         UI::paint("身份牌：待检验", UI::Color::Gray),
-        40);
+        65);
     frame.addDivider();
     frame.addBlank();
 
@@ -760,12 +764,12 @@ void Game::renderRoad() const {
             index < 3
                 ? UI::paint(gateArt[static_cast<std::size_t>(index)], UI::Color::Yellow)
                 : UI::paint("（我是城门）", UI::Color::Gray);
-        frame.addLine(sceneRow(playerArt[static_cast<std::size_t>(index)], 8, gateLine, 50));
+        frame.addLine(sceneRow(playerArt[static_cast<std::size_t>(index)], 10, gateLine, 84));
     }
-    frame.addLine(UI::paint(floorLine(60), UI::Color::Gray));
+    frame.addLine(UI::paint(floorLine(92), UI::Color::Gray));
     frame.addLine(sceneRow(
-        UI::paint("旅人", UI::Color::BrightCyan), 8,
-        UI::paint("城门", UI::Color::Yellow), 50));
+        UI::paint("旅人", UI::Color::BrightCyan), 10,
+        UI::paint("城门", UI::Color::Yellow), 84));
 
     frame.addBlank();
     frame.addWrapped("风卷着灰烬吹过荒路。这里刚经历过一场无法解释的灾变。", "  ");
@@ -804,6 +808,7 @@ bool Game::showGatekeeper() {
                 std::unique_ptr<Player> loaded = SaveGame::load(error);
                 if (loaded) {
                     player_ = std::move(*loaded);
+                    resumedFromSave_ = true;
                     return true;
                 }
                 message = "身份牌读取失败：" + error;
@@ -840,7 +845,7 @@ void Game::renderGate(const SaveSummary& summary, const std::string& message,
     frame.addColumns(
         UI::paint("城门 · 登记处", UI::Color::BrightCyan),
         UI::paint("身份牌检测", UI::Color::Gray),
-        40);
+        65);
     frame.addDivider();
     frame.addBlank();
 
@@ -876,14 +881,14 @@ void Game::renderGate(const SaveSummary& summary, const std::string& message,
 
     std::vector<std::string> rightRows;
     rightRows.push_back(std::string());
-    rightRows.push_back(UI::center(cardBorder(true), 34));
-    rightRows.push_back(UI::center(cardLine("身份牌  " + cardStatus), 34));
-    rightRows.push_back(UI::center(cardLine("姓名  " + cardName), 34));
-    rightRows.push_back(UI::center(cardLine("性别  " + cardGender), 34));
-    rightRows.push_back(UI::center(cardLine("物种  " + cardSpecies), 34));
-    rightRows.push_back(UI::center(cardLine("等级  " + cardLevel), 34));
-    rightRows.push_back(UI::center(cardLine("金币  " + cardGold), 34));
-    rightRows.push_back(UI::center(cardBorder(false), 34));
+    rightRows.push_back(UI::center(cardBorder(true), 54));
+    rightRows.push_back(UI::center(cardLine("身份牌  " + cardStatus), 54));
+    rightRows.push_back(UI::center(cardLine("姓名  " + cardName), 54));
+    rightRows.push_back(UI::center(cardLine("性别  " + cardGender), 54));
+    rightRows.push_back(UI::center(cardLine("物种  " + cardSpecies), 54));
+    rightRows.push_back(UI::center(cardLine("等级  " + cardLevel), 54));
+    rightRows.push_back(UI::center(cardLine("金币  " + cardGold), 54));
+    rightRows.push_back(UI::center(cardBorder(false), 54));
 
     const std::vector<std::string>& robot = Sprites::gatekeeper();
     const int robotRows = static_cast<int>(robot.size()) + 1;
@@ -893,24 +898,33 @@ void Game::renderGate(const SaveSummary& summary, const std::string& message,
         std::string left;
         if (row < static_cast<int>(robot.size())) {
             left = UI::center(UI::paint(robot[static_cast<std::size_t>(row)],
-                                        UI::Color::Gray), 30);
+                                        UI::Color::Gray), 45);
         } else if (row == static_cast<int>(robot.size())) {
-            left = UI::center(UI::paint("机械门卫", UI::Color::Yellow), 30);
+            left = UI::center(UI::paint("机械门卫", UI::Color::Yellow), 45);
         }
 
         const std::string right =
             row < static_cast<int>(rightRows.size())
                 ? rightRows[static_cast<std::size_t>(row)]
                 : std::string();
-        frame.addSplit(left, right, 30);
+        frame.addSplit(left, right, 45);
     }
 
     frame.addBlank();
+    std::vector<int> typedRows;
     if (!dialogueLine.empty()) {
+        const int start = frame.rowCount();
         frame.addWrapped(dialogueLine, "  ");
+        for (int index = start; index < frame.rowCount(); ++index) {
+            typedRows.push_back(index);
+        }
     }
     if (!message.empty()) {
+        const int start = frame.rowCount();
         frame.addWrapped(message, "  ");
+        for (int index = start; index < frame.rowCount(); ++index) {
+            typedRows.push_back(index);
+        }
     }
     frame.addBlank();
     frame.addDivider();
@@ -931,7 +945,12 @@ void Game::renderGate(const SaveSummary& summary, const std::string& message,
                 UI::paint("[0]", UI::Color::BrightYellow) + " 返回荒路");
         }
     }
-    frame.render();
+
+    if (typedRows.empty()) {
+        frame.render();
+    } else {
+        frame.renderTypewriter(typedRows);
+    }
 }
 
 std::vector<std::string> Game::gateDialogue(const SaveSummary& summary) const {
@@ -992,6 +1011,7 @@ bool Game::registerNewIdentity(std::string& message) {
     saveStoryProgress(newPlayer.getName(), 0, 0);
 
     player_ = std::move(newPlayer);
+    resumedFromSave_ = false;
     return true;
 }
 
@@ -1114,9 +1134,56 @@ void Game::showCityEntryNarration() const {
                                 player_.getGender() + " · " + player_.getSpecies(),
                                 UI::Color::Gray));
     frame.addBlank();
-    frame.render();
+    frame.renderTypewriter();
 
     UI::waitForEnter(UI::paint("  按回车继续 > ", UI::Color::BrightGreen));
+}
+
+void Game::showReawakening() const {
+    showStoryPage(
+        "梦 · 沉没的王都",
+        {
+            "你又梦见那座城。街道倒悬在头顶，窗户里没有灯。",
+            "无脸的人从你身边走过，胸前的身份牌轻轻相撞。",
+            "城市中央，一台熄灭的炉子还在发热。一个老人背对着你。",
+            "你想问他为什么。他先开口：‘你终于回来了。’",
+            "你想说自己不是回来，只是被带到了这里。可梦里没有声音。"
+        },
+        UI::Color::BrightMagenta,
+        "  按回车继续 > ");
+
+    showStoryPage(
+        "醒来 · 营地的火",
+        {
+            "你在一间半塌的屋子里醒来。火堆快灭了，身份牌压在胸口。",
+            "梦里的话还留在耳边。你分不清那是记忆，还是别人塞给你的。",
+            "你记得自己来过这里，却想不起来最初为什么出发。",
+            "像是有人在你胸口系了一根很细的线，另一端在地底。"
+        },
+        UI::Color::BrightCyan,
+        "  按回车继续 > ");
+
+    std::vector<std::string> memory = {
+        "你想起荒路、城门和那个机械门卫。",
+        "你记得自己迈出每一步，也记得自己可以停下。",
+        "可你偏偏没有停。仿佛来这里并不是你的意愿，",
+        "而是某个更古老的东西，先替你做了决定。"
+    };
+
+    if (storyStage_ >= kStoryClueCount + 1) {
+        memory.push_back("你记得自己已经站在炉心前，做过一个不能撤回的选择。");
+    } else if (storyStage_ == kStoryClueCount) {
+        memory.push_back("你记得核心的门已经打开，门后有什么在等你。");
+    } else if (storyStage_ > 0) {
+        memory.push_back("你记得自己已经往下走过 " + std::to_string(storyStage_) +
+                         " 段路。");
+    } else {
+        memory.push_back("你记得自己还没有真正走进遗迹。");
+    }
+    memory.push_back("火堆噼啪响了一声。你站起来，决定先弄清楚那根线通向哪里。");
+
+    showStoryPage("回忆 · 来时的路", memory, UI::Color::BrightYellow,
+                  "  按回车继续 > ");
 }
 
 void Game::showEnterRuinsCutscene() const {
@@ -1341,7 +1408,7 @@ void Game::renderCamp(const std::string& message) const {
                   "    背包 " + std::to_string(player_.getInventory().size()) + "/" +
                   std::to_string(player_.getInventory().capacity()),
                   UI::Color::Yellow),
-        44);
+        65);
     frame.addDivider();
     frame.addBlank();
 
@@ -1349,29 +1416,29 @@ void Game::renderCamp(const std::string& message) const {
     const std::vector<std::string>& fireArt = Sprites::campfire();
     for (int index = 0; index < 4; ++index) {
         frame.addColumns(
-            UI::center(playerArt[static_cast<std::size_t>(index)], 32),
+            UI::center(playerArt[static_cast<std::size_t>(index)], 49),
             UI::center(UI::paint(fireArt[static_cast<std::size_t>(index)],
-                                 UI::Color::BrightYellow), 32),
-            32);
+                                 UI::Color::BrightYellow), 49),
+            49);
     }
     frame.addColumns(
-        UI::center(UI::paint(player_.getName(), UI::Color::BrightCyan), 32),
-        UI::center(UI::paint("火堆", UI::Color::Yellow), 32),
-        32);
+        UI::center(UI::paint(player_.getName(), UI::Color::BrightCyan), 49),
+        UI::center(UI::paint("火堆", UI::Color::Yellow), 49),
+        49);
 
     frame.addBlank();
 
     frame.addLine(UI::paint(player_.getName(), UI::Color::BrightCyan) +
                   "  Lv." + std::to_string(player_.getLevel()));
     frame.addLine(
-        "HP " + UI::bar(player_.getHp(), player_.getMaxHp(), 20,
+        "HP " + UI::bar(player_.getHp(), player_.getMaxHp(), 30,
                         UI::healthColor(player_.getHp(), player_.getMaxHp())) +
         "  " + std::to_string(player_.getHp()) + "/" + std::to_string(player_.getMaxHp()));
     frame.addLine(
-        "MP " + UI::bar(player_.getMp(), player_.getMaxMp(), 20, UI::Color::BrightBlue) +
+        "MP " + UI::bar(player_.getMp(), player_.getMaxMp(), 30, UI::Color::BrightBlue) +
         "  " + std::to_string(player_.getMp()) + "/" + std::to_string(player_.getMaxMp()));
     frame.addLine(
-        "EXP " + UI::bar(player_.getExperience(), player_.getExperienceToNextLevel(), 20,
+        "EXP " + UI::bar(player_.getExperience(), player_.getExperienceToNextLevel(), 30,
                          UI::Color::BrightMagenta) +
         "  " + std::to_string(player_.getExperience()) + "/" +
         std::to_string(player_.getExperienceToNextLevel()));
@@ -1392,6 +1459,7 @@ void Game::renderCamp(const std::string& message) const {
 
     frame.addDivider();
     frame.addLine(UI::paint("营地记事", UI::Color::Gray));
+    std::vector<int> typedRows;
     if (message.empty()) {
         if (storyStage_ >= kStoryClueCount + 1) {
             frame.addLine(endingCampLine(storyEnding_));
@@ -1403,7 +1471,11 @@ void Game::renderCamp(const std::string& message) const {
             frame.addLine("火堆噼啪作响，遗迹入口就在不远处。");
         }
     } else {
+        const int start = frame.rowCount();
         frame.addWrapped(message, "· ");
+        for (int index = start; index < frame.rowCount(); ++index) {
+            typedRows.push_back(index);
+        }
     }
 
     frame.addDivider();
@@ -1425,7 +1497,11 @@ void Game::renderCamp(const std::string& message) const {
         UI::paint("[6]", UI::Color::BrightYellow) + " 休息   " +
         UI::paint("[0]", UI::Color::BrightYellow) + " 离开（自动存档）");
 
-    frame.render();
+    if (typedRows.empty()) {
+        frame.render();
+    } else {
+        frame.renderTypewriter(typedRows);
+    }
 }
 
 void Game::renderTravel(int progress, int playerColumn) const {
@@ -1437,7 +1513,7 @@ void Game::renderTravel(int progress, int playerColumn) const {
     frame.addColumns(
         UI::paint(area.act + " · " + area.name, UI::Color::BrightCyan),
         UI::paint("探索进度 " + std::to_string(progress) + "/3", UI::Color::Gray),
-        44);
+        65);
     frame.addDivider();
     frame.addBlank();
 
@@ -1447,21 +1523,21 @@ void Game::renderTravel(int progress, int playerColumn) const {
                                  : (storyStage_ >= 6 ? "石门" : "木门");
 
     frame.addLine(sceneRow(
-        UI::paint("火", UI::Color::Yellow), 12,
-        UI::paint("火", UI::Color::Yellow), 44));
+        UI::paint("火", UI::Color::Yellow), 16,
+        UI::paint("火", UI::Color::Yellow), 66));
 
     for (int index = 0; index < 4; ++index) {
         const std::string doorLine =
             index < 3 ? UI::paint(doorArt[static_cast<std::size_t>(index)], UI::Color::Yellow)
                       : std::string();
         frame.addLine(sceneRow(playerArt[static_cast<std::size_t>(index)], playerColumn,
-                               doorLine, 56));
+                               doorLine, 84));
     }
 
-    frame.addLine(UI::paint(floorLine(60), UI::Color::Gray));
+    frame.addLine(UI::paint(floorLine(92), UI::Color::Gray));
     frame.addLine(sceneRow(
         UI::paint(player_.getName(), UI::Color::BrightCyan), playerColumn,
-        UI::paint(doorLabel, UI::Color::Yellow), 56));
+        UI::paint(doorLabel, UI::Color::Yellow), 84));
 
     frame.addBlank();
     frame.addWrapped(travelFlavor(storyStage_, progress), "  ");
@@ -1552,14 +1628,14 @@ void Game::showStatusScreen() const {
                   "   物种 " + player_.getSpecies() +
                   "   等级 Lv." + std::to_string(player_.getLevel()));
     frame.addLine(
-        "HP   " + UI::bar(player_.getHp(), player_.getMaxHp(), 20,
+        "HP   " + UI::bar(player_.getHp(), player_.getMaxHp(), 30,
                           UI::healthColor(player_.getHp(), player_.getMaxHp())) +
         "  " + std::to_string(player_.getHp()) + "/" + std::to_string(player_.getMaxHp()));
     frame.addLine(
-        "MP   " + UI::bar(player_.getMp(), player_.getMaxMp(), 20, UI::Color::BrightBlue) +
+        "MP   " + UI::bar(player_.getMp(), player_.getMaxMp(), 30, UI::Color::BrightBlue) +
         "  " + std::to_string(player_.getMp()) + "/" + std::to_string(player_.getMaxMp()));
     frame.addLine(
-        "EXP  " + UI::bar(player_.getExperience(), player_.getExperienceToNextLevel(), 20,
+        "EXP  " + UI::bar(player_.getExperience(), player_.getExperienceToNextLevel(), 30,
                           UI::Color::BrightMagenta) +
         "  " + std::to_string(player_.getExperience()) + "/" +
         std::to_string(player_.getExperienceToNextLevel()));
@@ -1635,16 +1711,27 @@ void Game::showCampTalk() {
         }
         frame.addCentered(UI::paint("灰袍幸存者", UI::Color::Yellow));
         frame.addBlank();
+
+        std::vector<int> typedRows;
+        int start = frame.rowCount();
         frame.addWrapped("他没有脸。胸前那块身份牌磨得发白，只剩一个看不清的姓。", "  ");
+        for (int index = start; index < frame.rowCount(); ++index) {
+            typedRows.push_back(index);
+        }
         frame.addBlank();
+        start = frame.rowCount();
         frame.addWrapped(message, "  ");
+        for (int index = start; index < frame.rowCount(); ++index) {
+            typedRows.push_back(index);
+        }
+
         frame.addDivider();
         frame.addLine(
             UI::paint("[1]", UI::Color::BrightYellow) + " 问灾难   " +
             UI::paint("[2]", UI::Color::BrightYellow) + " 问遗迹   " +
             UI::paint("[3]", UI::Color::BrightYellow) + " 问四骑士   " +
             UI::paint("[0]", UI::Color::BrightYellow) + " 离开");
-        frame.render();
+        frame.renderTypewriter(typedRows);
 
         const int choice = UI::readChoice(
             UI::paint("  选择 > ", UI::Color::BrightGreen), 0, 3);
@@ -1775,14 +1862,14 @@ void Game::renderShop(const Shop& shop, const std::string& message, bool full) c
                   "   背包 " + std::to_string(player_.getInventory().size()) + "/" +
                   std::to_string(player_.getInventory().capacity()),
                   UI::Color::Yellow),
-        30);
+        45);
     frame.addDivider();
     frame.addBlank();
 
     const std::vector<std::string>& art =
         full ? Sprites::merchant() : Sprites::survivor();
     const std::string traderLabel = full ? "商人" : "拾荒者";
-    constexpr int kMerchantWidth = 22;
+    constexpr int kMerchantWidth = 33;
     const int artRows = static_cast<int>(art.size());
     const int rowCount = std::max(artRows + 2, shop.size());
 
@@ -1806,7 +1893,12 @@ void Game::renderShop(const Shop& shop, const std::string& message, bool full) c
     }
 
     frame.addBlank();
+    const int messageStart = frame.rowCount();
     frame.addWrapped(traderLabel + "：" + message, "  ");
+    std::vector<int> typedRows;
+    for (int index = messageStart; index < frame.rowCount(); ++index) {
+        typedRows.push_back(index);
+    }
     frame.addBlank();
     frame.addDivider();
     frame.addLine(
@@ -1814,7 +1906,7 @@ void Game::renderShop(const Shop& shop, const std::string& message, bool full) c
         UI::paint("[2]", UI::Color::BrightYellow) + " 出售   " +
         UI::paint("[3]", UI::Color::BrightYellow) + " 查看背包   " +
         UI::paint("[0]", UI::Color::BrightYellow) + " 离开");
-    frame.render();
+    frame.renderTypewriter(typedRows);
 }
 
 std::string Game::buyFromShop(Shop& shop) {
@@ -1951,7 +2043,7 @@ void Game::renderInventory(const std::string& title,
                   "   背包 " + std::to_string(player_.getInventory().size()) + "/" +
                   std::to_string(player_.getInventory().capacity()),
                   UI::Color::Yellow),
-        30);
+        45);
     frame.addDivider();
     frame.addBlank();
 
@@ -2019,9 +2111,14 @@ void Game::showEncounterCutscene(const Monster& monster) const {
     }
 
     frame.addBlank();
+    const int textStart = frame.rowCount();
     frame.addWrapped(monster.getEncounterText(), "  ");
+    std::vector<int> typedRows;
+    for (int index = textStart; index < frame.rowCount(); ++index) {
+        typedRows.push_back(index);
+    }
     frame.addBlank();
-    frame.render();
+    frame.renderTypewriter(typedRows);
 
     UI::waitForEnter(UI::paint("  按回车迎战 > ", UI::Color::BrightRed));
 }
@@ -2088,7 +2185,7 @@ std::string Game::showRewardRoom() {
     frame.addColumns(
         UI::paint("奖励房间", UI::Color::BrightCyan),
         UI::paint("宝箱", UI::Color::Yellow),
-        44);
+        65);
     frame.addDivider();
     frame.addBlank();
 
@@ -2097,14 +2194,19 @@ std::string Game::showRewardRoom() {
     }
 
     frame.addBlank();
+    const int messageStart = frame.rowCount();
     frame.addWrapped("房间中央放着一只旧木箱。锁扣上没有灰，像刚被人擦过。", "  ");
     frame.addWrapped("箱盖轻轻动了一下。也可能只是风。", "  ");
+    std::vector<int> typedRows;
+    for (int index = messageStart; index < frame.rowCount(); ++index) {
+        typedRows.push_back(index);
+    }
     frame.addBlank();
     frame.addDivider();
     frame.addLine(
         UI::paint("[1]", UI::Color::BrightYellow) + " 打开宝箱   " +
         UI::paint("[0]", UI::Color::BrightYellow) + " 离开");
-    frame.render();
+    frame.renderTypewriter(typedRows);
 
     const int choice = UI::readChoice(
         UI::paint("  选择 > ", UI::Color::BrightGreen), 0, 1);
@@ -2211,7 +2313,7 @@ void Game::showResult(const std::string& title,
         frame.addCentered(line);
     }
     frame.addBlank();
-    frame.render();
+    frame.renderTypewriter();
 
     UI::waitForEnter(UI::paint("  按回车返回营地 > ", UI::Color::BrightGreen));
 }
@@ -2235,7 +2337,7 @@ std::string Game::explore() {
     const bool bossBattle = (storyStage_ == kStoryClueCount - 1);
 
     int progress = 1;
-    int playerColumn = 8;
+    int playerColumn = 10;
     std::unique_ptr<Monster> monster;
     bool disasterShown = false;
 
@@ -2253,7 +2355,7 @@ std::string Game::explore() {
         }
 
         if (progress < 3) {
-            const int targetColumn = playerColumn + 16;
+            const int targetColumn = playerColumn + 24;
             animateWalk(playerColumn, targetColumn, progress);
             playerColumn = targetColumn;
             ++progress;
@@ -2262,8 +2364,8 @@ std::string Game::explore() {
                 disasterShown = true;
             }
         } else {
-            animateWalk(playerColumn, 46, progress);
-            playerColumn = 46;
+            animateWalk(playerColumn, 70, progress);
+            playerColumn = 70;
             UI::sleepFor(200);
             if (!disasterShown) {
                 triggerTravelDisaster();
@@ -2368,5 +2470,5 @@ void Game::renderFarewell(const std::string& warning) const {
         frame.addWrapped(warning, "  ");
     }
     frame.addBlank();
-    frame.render();
+    frame.renderTypewriter();
 }

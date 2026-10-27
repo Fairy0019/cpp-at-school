@@ -33,6 +33,7 @@ private:
     bool chooseIdentityGender(std::string& gender) const;
     bool chooseIdentitySpecies(std::string& species) const;
     void showCityEntryNarration() const;
+    void showReawakening() const;
 
     void showEnterRuinsCutscene() const;
     void showAreaIntro(int stage) const;
@@ -73,4 +74,5 @@ private:
     int storyStage_;
     int storyEnding_;
     bool shopAvailable_;
+    bool resumedFromSave_;
 };

@@ -13,8 +13,8 @@
 
 namespace {
 
-constexpr int kLeftCardWidth = 31;
-constexpr int kRightCardWidth = 32;
+constexpr int kLeftCardWidth = 49;
+constexpr int kRightCardWidth = 50;
 
 }  // namespace
 
@@ -45,7 +45,7 @@ void Battle::render(const Monster& monster, bool battleEnded) const {
                   (hasDisaster_ ? " · " + disasterName_ : ""),
                   hasDisaster_ ? DisasterVisual::tint(disasterType_)
                                : UI::Color::Gray),
-        40);
+        65);
     frame.addDivider();
     frame.addBlank();
 
@@ -83,15 +83,15 @@ void Battle::render(const Monster& monster, bool battleEnded) const {
     frame.addBlank();
 
     frame.addSplit(
-        "  HP " + UI::bar(player_.getHp(), player_.getMaxHp(), 12,
+        "  HP " + UI::bar(player_.getHp(), player_.getMaxHp(), 24,
                           UI::healthColor(player_.getHp(), player_.getMaxHp())) +
         "  " + std::to_string(player_.getHp()) + "/" + std::to_string(player_.getMaxHp()),
-        "  HP " + UI::bar(monster.getHp(), monster.getMaxHp(), 12, UI::Color::BrightRed) +
+        "  HP " + UI::bar(monster.getHp(), monster.getMaxHp(), 24, UI::Color::BrightRed) +
         "  " + std::to_string(monster.getHp()) + "/" + std::to_string(monster.getMaxHp()),
         kLeftCardWidth);
 
     frame.addSplit(
-        "  MP " + UI::bar(player_.getMp(), player_.getMaxMp(), 12, UI::Color::BrightBlue) +
+        "  MP " + UI::bar(player_.getMp(), player_.getMaxMp(), 24, UI::Color::BrightBlue) +
         "  " + std::to_string(player_.getMp()) + "/" + std::to_string(player_.getMaxMp()),
         std::string(),
         kLeftCardWidth);
@@ -100,7 +100,7 @@ void Battle::render(const Monster& monster, bool battleEnded) const {
     const bool ultimateReady = charge >= Player::kUltimateMax;
     std::string chargeLine =
         UI::paint("  充能 ", ultimateReady ? UI::Color::BrightYellow : UI::Color::Gray) +
-        UI::bar(charge, Player::kUltimateMax, 10,
+        UI::bar(charge, Player::kUltimateMax, 18,
                 ultimateReady ? UI::Color::BrightMagenta : UI::Color::Gray) +
         "  " + std::to_string(charge) + "/" + std::to_string(Player::kUltimateMax);
     if (ultimateReady) {
@@ -149,15 +149,15 @@ void Battle::renderInventory(const std::string& message) const {
                   "   背包 " + std::to_string(player_.getInventory().size()) + "/" +
                   std::to_string(player_.getInventory().capacity()),
                   UI::Color::Yellow),
-        30);
+        45);
     frame.addDivider();
     frame.addBlank();
 
     frame.addLine(
-        "HP " + UI::bar(player_.getHp(), player_.getMaxHp(), 16,
+        "HP " + UI::bar(player_.getHp(), player_.getMaxHp(), 30,
                         UI::healthColor(player_.getHp(), player_.getMaxHp())) +
         "  " + std::to_string(player_.getHp()) + "/" + std::to_string(player_.getMaxHp()) +
-        "    MP " + UI::bar(player_.getMp(), player_.getMaxMp(), 12, UI::Color::BrightBlue) +
+        "    MP " + UI::bar(player_.getMp(), player_.getMaxMp(), 18, UI::Color::BrightBlue) +
         "  " + std::to_string(player_.getMp()) + "/" + std::to_string(player_.getMaxMp()));
 
     frame.addBlank();

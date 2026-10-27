@@ -141,6 +141,26 @@ void setupConsole() {
         if (SetConsoleMode(output, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING)) {
             g_ansiEnabled = true;
         }
+
+        // 放大画框后需要更高的窗口；失败时保持原尺寸即可。
+        CONSOLE_SCREEN_BUFFER_INFO info;
+        if (GetConsoleScreenBufferInfo(output, &info)) {
+            COORD size = info.dwSize;
+            if (size.X < 120) {
+                size.X = 120;
+            }
+            if (size.Y < 44) {
+                size.Y = 44;
+            }
+            SetConsoleScreenBufferSize(output, size);
+
+            SMALL_RECT window;
+            window.Left = 0;
+            window.Top = 0;
+            window.Right = static_cast<SHORT>(std::min<int>(size.X - 1, 119));
+            window.Bottom = static_cast<SHORT>(std::min<int>(size.Y - 1, 43));
+            SetConsoleWindowInfo(output, TRUE, &window);
+        }
     }
 #endif
 }
@@ -199,6 +219,54 @@ std::string paint(const std::string& text, Color color, bool bold) {
         return text;
     }
     return prefix + text + "\x1b[0m";
+}
+
+void typeText(const std::string& text, int delayMs) {
+    if (!g_consoleAttached || delayMs <= 0) {
+        std::cout << text;
+        std::cout.flush();
+        return;
+    }
+
+    std::size_t index = 0;
+    while (index < text.size()) {
+        if (text[index] == '\x1b') {
+            const std::size_t end = ansiEnd(text, index);
+            if (end > index) {
+                std::cout.write(text.data() + index,
+                                static_cast<std::streamsize>(end - index));
+                index = end;
+                continue;
+            }
+        }
+
+        if (text[index] == '\n') {
+            std::cout.put('\n');
+            std::cout.flush();
+            ++index;
+            std::this_thread::sleep_for(std::chrono::milliseconds(delayMs * 2));
+            continue;
+        }
+
+        const std::size_t start = index;
+        const char32_t codePoint = decodeUtf8(text, index);
+        std::cout.write(text.data() + start,
+                        static_cast<std::streamsize>(index - start));
+        std::cout.flush();
+
+        int pause = delayMs;
+        if (codePoint == ' ') {
+            pause = std::max(1, delayMs / 3);
+        } else if (codePoint == U'。' || codePoint == U'！' ||
+                   codePoint == U'？' || codePoint == U'…') {
+            pause = delayMs * 3;
+        } else if (codePoint == U'，' || codePoint == U'、' ||
+                   codePoint == U'；' || codePoint == U'：') {
+            pause = delayMs * 2;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(pause));
+    }
+    std::cout.flush();
 }
 
 std::string bar(int value, int maxValue, int width, Color color) {
