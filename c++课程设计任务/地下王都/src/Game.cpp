@@ -138,6 +138,7 @@ Game::Game()
 
 void Game::run() {
     showTitleScreen();
+    showPrologueScreen();
 
     if (!startFromGate()) {
         return;
@@ -227,13 +228,13 @@ void Game::showTitleScreen() const {
     frame.addLine(UI::fit(UI::paint(centerInner(innerBottom), UI::Color::Gray), 64));
 
     frame.addLine(UI::fit(UI::paint(
-        "        ╲                    ╱          ╲                    ╱",
+        "     s    ╲                    ╱          ╲              a     ╱",
         UI::Color::Gray), 64));
     frame.addLine(UI::fit(UI::paint(
-        "         ╲                  ╱            ╲                  ╱",
+        "   s ` s   ╲      wera        ╱      x     ╲           aa     ╱",
         UI::Color::Gray), 64));
     frame.addLine(UI::fit(UI::paint(
-        "          ╲                ╱              ╲                ╱",
+        "     s      ╲        sdf     ╱       x      ╲            ac  ╱",
         UI::Color::Gray), 64));
 
     frame.addLine(UI::fit(UI::paint(
@@ -241,13 +242,13 @@ void Game::showTitleScreen() const {
         UI::Color::Gray), 64));
 
     frame.addLine(UI::fit(UI::paint(
-        "          ╱                ╲              ╱                ╲",
+        "        as  ╱           asd  ╲        sss   ╱                ╲",
         UI::Color::Gray), 64));
     frame.addLine(UI::fit(UI::paint(
-        "         ╱                  ╲            ╱                  ╲",
+        "    hf     ╱      adsa        ╲   mki      ╱           o      ╲",
         UI::Color::Gray), 64));
     frame.addLine(UI::fit(UI::paint(
-        "        ╱                    ╲          ╱                    ╲",
+        "          ╱  k          gsw    ╲          ╱             o      ╲",
         UI::Color::Gray), 64));
 
     frame.addCentered(UI::paint("·   古   ·   城   ·   咒   ·   罪   ·   墟   ·",
@@ -258,12 +259,31 @@ void Game::showTitleScreen() const {
     UI::waitForEnter(UI::paint("  按回车 > ", UI::Color::BrightGreen));
 }
 
+void Game::showPrologueScreen() const {
+    UI::clearScreen();
+
+    Frame frame;
+    frame.addBlank();
+    frame.addCentered(UI::paint("你随着路标来到了这里。", UI::Color::BrightCyan));
+    frame.addBlank();
+    frame.addCentered("荒芜，像是时间之外的地方。");
+    frame.addCentered("实际上，你连自己是谁也忘了。");
+    frame.addBlank();
+    frame.render();
+
+    UI::waitForEnter(UI::paint("  按回车继续 > ", UI::Color::BrightGreen));
+}
+
 bool Game::startFromGate() {
     while (true) {
         renderRoad();
 
         const int choice = UI::readChoice(UI::paint("  选择 > ", UI::Color::BrightGreen), 0, 1);
-        if (choice == 0 || choice == -1) {
+        if (choice == 0) {
+            showRoadLeaveScreen();
+            return false;
+        }
+        if (choice == -1) {
             return false;
         }
 
@@ -271,6 +291,21 @@ bool Game::startFromGate() {
             return true;
         }
     }
+}
+
+void Game::showRoadLeaveScreen() const {
+    UI::clearScreen();
+
+    Frame frame;
+    frame.addBlank();
+    frame.addCentered(UI::paint("不过，你离开了。", UI::Color::Gray));
+    frame.addBlank();
+    frame.addCentered("你与一些神奇的故事也分开了。");
+    frame.addCentered("这似乎是命中注定的。");
+    frame.addBlank();
+    frame.render();
+
+    UI::waitForEnter(UI::paint("  按回车离开 > ", UI::Color::Green));
 }
 
 void Game::renderRoad() const {
@@ -288,8 +323,9 @@ void Game::renderRoad() const {
     const std::vector<std::string>& gateArt = Sprites::door();
     for (int index = 0; index < 4; ++index) {
         const std::string gateLine =
-            index < 3 ? UI::paint(gateArt[static_cast<std::size_t>(index)], UI::Color::Yellow)
-                      : std::string();
+            index < 3
+                ? UI::paint(gateArt[static_cast<std::size_t>(index)], UI::Color::Yellow)
+                : UI::paint("（我是城门）", UI::Color::Gray);
         frame.addLine(sceneRow(playerArt[static_cast<std::size_t>(index)], 8, gateLine, 50));
     }
     frame.addLine(UI::paint(floorLine(60), UI::Color::Gray));
@@ -299,7 +335,7 @@ void Game::renderRoad() const {
 
     frame.addBlank();
     frame.addWrapped("风卷着灰烬吹过荒路。城门半塌，门后没有灯。", "  ");
-    frame.addWrapped("城门边立着一个残破的机械人，胸口的灯忽明忽暗。", "  ");
+    frame.addWrapped("城门边立着一个残破的机械，看不出是哪个年代的遗物了。", "  ");
     frame.addBlank();
     frame.addDivider();
     frame.addLine(
@@ -310,6 +346,14 @@ void Game::renderRoad() const {
 
 bool Game::showGatekeeper() {
     std::string message;
+
+    const SaveSummary introSummary = SaveGame::peek();
+    if (UI::isInteractive()) {
+        for (int visibleLines = 1; visibleLines <= 3; ++visibleLines) {
+            renderGate(introSummary, "", visibleLines);
+            UI::sleepFor(280);
+        }
+    }
 
     while (true) {
         const SaveSummary summary = SaveGame::peek();
@@ -355,7 +399,8 @@ bool Game::showGatekeeper() {
     }
 }
 
-void Game::renderGate(const SaveSummary& summary, const std::string& message) const {
+void Game::renderGate(const SaveSummary& summary, const std::string& message,
+                      int visibleDialogueLines) const {
     UI::clearScreen();
 
     Frame frame;
@@ -428,24 +473,38 @@ void Game::renderGate(const SaveSummary& summary, const std::string& message) co
     }
 
     frame.addBlank();
-    frame.addWrapped("机械门卫：「王都只认身份牌，不认脸。」", "  ");
-    frame.addWrapped("「烧杀抢掠、假身份，在这里都不新鲜。」", "  ");
-    if (!message.empty()) {
-        frame.addWrapped(message, "  ");
-    } else if (summary.valid) {
-        frame.addWrapped("「出示身份牌，我就放你进去。」", "  ");
+
+    std::vector<std::string> dialogue;
+    if (summary.valid) {
+        dialogue.push_back("机械门卫：>「请出示身份牌」<");
+        dialogue.push_back("「你或许需要一个新的身份牌。」");
+        dialogue.push_back("「出示身份牌，我就放你进去。」");
     } else if (summary.fileExists) {
-        frame.addWrapped("「牌子坏了。重新登记一个名字吧。」", "  ");
+        dialogue.push_back("机械门卫：>「身份牌损坏」<");
+        dialogue.push_back("「你或许需要一个新的身份牌。」");
+        dialogue.push_back("「重新登记一个名字吧。」");
     } else {
-        frame.addWrapped("「没有牌子，就登记一个名字。」", "  ");
+        dialogue.push_back("机械门卫：>「没有身份牌」<");
+        dialogue.push_back("「你或许需要一个新的身份牌。」");
+        dialogue.push_back("「登记一个名字，从今以后那就是你。」");
     }
+
+    const int visible = std::max(0, std::min(visibleDialogueLines,
+                                              static_cast<int>(dialogue.size())));
+    for (int index = 0; index < visible; ++index) {
+        frame.addWrapped(dialogue[static_cast<std::size_t>(index)], "  ");
+    }
+    if (!message.empty() && visible >= static_cast<int>(dialogue.size())) {
+        frame.addWrapped(message, "  ");
+    }
+
     frame.addBlank();
     frame.addDivider();
 
     if (summary.valid) {
         frame.addLine(
-            UI::paint("[1]", UI::Color::BrightYellow) + " 出示身份牌   " +
-            UI::paint("[2]", UI::Color::BrightYellow) + " 重新登记（覆盖）   " +
+            UI::paint("[1]", UI::Color::BrightYellow) + " 这是我的身份牌   " +
+            UI::paint("[2]", UI::Color::BrightYellow) + " 不，我忘记了自己是谁   " +
             UI::paint("[0]", UI::Color::BrightYellow) + " 返回荒路");
     } else if (summary.fileExists) {
         frame.addLine(
@@ -782,6 +841,7 @@ void Game::showStatusScreen() const {
         frame.addCentered(line);
     }
     frame.addCentered(UI::paint(player_.getName(), UI::Color::BrightCyan));
+    frame.addCentered(UI::paint("我帅的要命，真的 ㄟ", UI::Color::Gray));
     frame.addDivider();
 
     frame.addLine("姓名 " + player_.getName() +
@@ -1203,8 +1263,8 @@ std::string Game::explore() {
             playerColumn = targetColumn;
             ++progress;
         } else {
-            animateWalk(playerColumn, 42, progress);
-            playerColumn = 42;
+            animateWalk(playerColumn, 46, progress);
+            playerColumn = 46;
             UI::sleepFor(200);
             monster = createRandomMonster();
             showEncounterCutscene(*monster);

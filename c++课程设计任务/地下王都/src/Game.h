@@ -19,10 +19,13 @@ public:
 
 private:
     void showTitleScreen() const;
+    void showPrologueScreen() const;
     bool startFromGate();
     void renderRoad() const;
+    void showRoadLeaveScreen() const;
     bool showGatekeeper();
-    void renderGate(const SaveSummary& summary, const std::string& message) const;
+    void renderGate(const SaveSummary& summary, const std::string& message,
+                    int visibleDialogueLines = 3) const;
     bool registerNewIdentity(std::string& message);
     std::string readIdentityText(const std::string& prompt, int maxWidth) const;
     bool chooseIdentityGender(std::string& gender) const;
