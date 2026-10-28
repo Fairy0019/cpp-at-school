@@ -151,8 +151,14 @@ Frame::Padding Frame::computePadding() const {
     const int header = resolvedHeaderRows();
     const int footer = resolvedFooterRows(header);
     const int bodyRows = std::max(0, count - header - footer);
-    const int middleRows = std::max(minHeight_, bodyRows);
-    const int extra = middleRows - bodyRows;
+
+    // 外框固定为 34 行：上景、标题、标题分隔线、下景和上下留白先占位，
+    // 剩余行全部给中景；中景至少 20 行。
+    const int bands = topPadding_ + header + footer + bottomPadding_;
+    const int wantedMiddle = std::max(20, bodyRows);
+    const int totalContent = std::max(minHeight_, bands + wantedMiddle);
+    const int middleRows = totalContent - bands;
+    const int extra = std::max(0, middleRows - bodyRows);
     return {topPadding_, header, extra / 2, extra - extra / 2, footer, bottomPadding_};
 }
 

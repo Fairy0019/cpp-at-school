@@ -8,8 +8,8 @@
 class Frame {
 public:
     static constexpr int kDefaultWidth = 105;
-    // 中景的最小高度；内容不足时在中间补空白，不再把空白平均分到上下。
-    static constexpr int kDefaultHeight = 20;
+    // 画框内容区的目标高度；外框固定为 34 行（内容 32 行 + 上下边框）。
+    static constexpr int kDefaultHeight = 32;
 
     explicit Frame(int width = kDefaultWidth, int minHeight = kDefaultHeight);
 

@@ -20,6 +20,8 @@ public:
 
 private:
     void showTitleScreen() const;
+    void showEngineLogo() const;
+    void showHealthReminder() const;
     void showPrologueScreen() const;
     bool showStoryBeat();
     bool startFromGate();

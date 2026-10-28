@@ -681,6 +681,8 @@ Game::Game()
 
 void Game::run() {
     showTitleScreen();
+    showEngineLogo();
+    showHealthReminder();
     showPrologueScreen();
 
     if (!startFromGate()) {
@@ -767,6 +769,93 @@ void Game::showTitleScreen() const {
     frame.render();
 
     UI::waitForEnter(UI::paint("  按回车 > ", UI::Color::BrightGreen));
+}
+
+void Game::showEngineLogo() const {
+    UI::clearScreen();
+
+    Frame frame;
+    frame.addCentered(UI::paint("沉 没 王 都  ·  引 擎", UI::Color::Gray));
+    frame.addBlank();
+
+    constexpr int kBoxWidth = 62;
+    constexpr int kInnerWidth = kBoxWidth - 2;
+    frame.addCentered(UI::paint("╭" + repeatText("─", kInnerWidth) + "╮",
+                                UI::Color::BrightBlue));
+
+    const auto boxLine = [&](const std::string& content) {
+        frame.addCentered(UI::paint("│", UI::Color::BrightBlue) +
+                          UI::padRight(UI::center(content, kInnerWidth),
+                                       kInnerWidth) +
+                          UI::paint("│", UI::Color::BrightBlue));
+    };
+
+    const std::vector<std::string> logo = {
+        "  ██████╗    ██╗  ██╗  ██╗  ",
+        " ██╔════╝    ╚██╗██╔╝  ╚██╗ ",
+        " ██║          ╚███╔╝    ╚██╗",
+        " ██║          ██╔██╗    ██╔╝",
+        " ╚██████╗    ██╔╝ ██╗  ██╔╝ ",
+        "  ╚═════╝    ╚═╝  ╚═╝  ╚═╝  "
+    };
+
+    boxLine("");
+    for (const std::string& line : logo) {
+        boxLine(UI::paint(line, UI::Color::BrightBlue));
+    }
+    boxLine("");
+    boxLine(UI::paint("Enhanced development tools for C++",
+                      UI::Color::BrightCyan));
+    boxLine(UI::paint("in VS Code", UI::Color::BrightCyan));
+    boxLine("");
+    boxLine(UI::paint("引擎：C++", UI::Color::BrightYellow));
+    frame.addCentered(UI::paint("╰" + repeatText("─", kInnerWidth) + "╯",
+                                UI::Color::BrightBlue));
+
+    frame.addBlank();
+    frame.addCentered(UI::paint("██", UI::Color::BrightRed) + "  " +
+                      UI::paint("██", UI::Color::BrightGreen));
+    frame.addCentered(UI::paint("██", UI::Color::BrightBlue) + "  " +
+                      UI::paint("██", UI::Color::BrightYellow));
+    frame.addCentered(UI::paint("Microsoft Windows", UI::Color::Gray));
+    frame.render();
+
+    UI::waitForEnter(UI::paint("  按回车继续 > ", UI::Color::BrightGreen));
+}
+
+void Game::showHealthReminder() const {
+    UI::clearScreen();
+
+    Frame frame;
+    frame.addCentered(UI::paint("温 馨 提 醒", UI::Color::BrightYellow, true));
+    frame.addBlank();
+
+    const std::vector<std::string> heart = {
+        "  ♥     ♥  ",
+        " ♥       ♥ ",
+        "♥         ♥",
+        "♥         ♥",
+        " ♥       ♥ ",
+        "  ♥     ♥  ",
+        "    ♥ ♥    ",
+        "     ♥     "
+    };
+    for (const std::string& line : heart) {
+        frame.addCentered(UI::paint(line, UI::Color::BrightRed));
+    }
+
+    frame.addBlank();
+    frame.addCentered("长时间游玩请记得休息。");
+    frame.addCentered("如果出现头晕、眼花、恶心、心悸或手部麻木，请立即停止游戏。");
+    frame.addCentered("到通风处坐一会儿，喝点水；症状持续或加重，请及时就医。");
+    frame.addBlank();
+    frame.addCentered(UI::paint("游戏可以重来，身体只有一次。",
+                                UI::Color::BrightYellow));
+    frame.addCentered(UI::paint("愿你在王都里走得远，也记得回到地面。",
+                                UI::Color::Gray));
+    frame.render();
+
+    UI::waitForEnter(UI::paint("  按回车继续 > ", UI::Color::BrightGreen));
 }
 
 void Game::showPrologueScreen() const {
