@@ -33,6 +33,16 @@ namespace {
 constexpr const char* kStoryProgressFile = "story_progress.sav";
 constexpr int kStoryClueCount = 8;
 
+const std::vector<std::string>& hubLocationNames() {
+    static const std::vector<std::string> names = {"集市", "营地", "酒馆", "高塔"};
+    return names;
+}
+
+const std::vector<int>& hubLocationPositions() {
+    static const std::vector<int> positions = {20, 42, 64, 86};
+    return positions;
+}
+
 struct StoryProgress {
     int stage = 0;
     int ending = 0;
@@ -343,6 +353,90 @@ const std::vector<StoryClue>& storyClues() {
     return data;
 }
 
+struct JournalEntry {
+    std::string id;
+    std::string category;
+    std::string title;
+    std::vector<std::string> lines;
+};
+
+const std::vector<JournalEntry>& journalEntries() {
+    static const std::vector<JournalEntry> data = [] {
+        std::vector<JournalEntry> entries;
+        const std::vector<StoryClue>& clues = storyClues();
+        for (int index = 0; index < static_cast<int>(clues.size()); ++index) {
+            const StoryClue& clue = clues[static_cast<std::size_t>(index)];
+            JournalEntry entry;
+            entry.id = "clue." + std::to_string(index + 1);
+            entry.category = "主线";
+            entry.title = clue.location;
+            entry.lines = clue.record;
+            entry.lines.push_back("");
+            entry.lines.insert(entry.lines.end(), clue.reaction.begin(), clue.reaction.end());
+            entries.push_back(entry);
+        }
+
+        entries.push_back({
+            "talk.disaster", "传闻", "灰袍人的灾难传闻",
+            {
+                "灰袍人说，夏天落雪、地动和火光经常在同一天出现。",
+                "官府把它们当成三场互不相关的天灾，但他见过它们同时来。",
+                "老辈人相信地下有一台炉子：雪是它冷了，火是它烧过头。"
+            }
+        });
+        entries.push_back({
+            "talk.ruins", "传闻", "遗迹与旧王朝",
+            {
+                "灰袍人说，粮仓、观测站和工坊越往里，记录越旧。",
+                "王室档案馆的门认旧王朝的印，不认现在的身份牌。",
+                "他提醒你：别只看墙，也看看墙缝里的东西。"
+            }
+        });
+        entries.push_back({
+            "talk.knights", "传闻", "四骑士的传说",
+            {
+                "幸存者把地下的守护身影称为征服、战争、饥荒、死亡。",
+                "灰袍人只见过最后一个，甲胄上写着‘封存’。",
+                "它不杀地表的人，只挡核心的门。"
+            }
+        });
+        entries.push_back({
+            "ancestor.room", "暗线", "地下五层的绞索",
+            {
+                "塌陷矿道尽头有一间被封死的休息室。",
+                "梁上垂着半截绳索，遗骸下面的矿灯早已熄灭。",
+                "墙上有一个缺角的炉形记号，和主角梦里的记号相似。"
+            }
+        });
+        entries.push_back({
+            "ancestor.truth", "暗线", "遗骸与家族记号",
+            {
+                "遗骸的衣料不属于这个时代，随身有矿灯、镐和半张身份牌。",
+                "官方档案说他是叛徒；商人说他是替身；考古者说可能是更早的矿工。",
+                "没有一种说法能完全对上，但这条路已经有人走过。"
+            }
+        });
+        entries.push_back({
+            "tavern.ash", "传闻", "酒馆里的火山灰",
+            {
+                "酒馆老板说，地震撕开山体后，火山灰就再没真正散过。",
+                "居民外出必须戴面具，身份牌只负责登记，不再代替脸。",
+                "他还说，地下五层有一扇被钉死的门，只有少数人知道。"
+            }
+        });
+        entries.push_back({
+            "tower.gate", "地点", "高塔的锁链",
+            {
+                "高塔入口被灰烬和锁链封住。",
+                "塔顶偶尔有金属反光，但暂时上不去。",
+                "这里以后会通向征服骑士。"
+            }
+        });
+        return entries;
+    }();
+    return data;
+}
+
 const AreaInfo& areaForStage(int stage) {
     const std::vector<AreaInfo>& data = areas();
     if (stage < 0) {
@@ -596,69 +690,7 @@ void Game::run() {
         showCityEntryNarration();
     }
 
-    std::string message;
-    if (storyStage_ >= kStoryClueCount + 1) {
-        message = endingCampLine(storyEnding_);
-    } else if (storyStage_ == kStoryClueCount) {
-        message = "核心的门已经打开。最深处传来缓慢的脉动。";
-    } else {
-        message = "你在城内一处半塌的屋子里支起火堆。";
-    }
-    bool running = true;
-
-    while (running) {
-        renderCamp(message);
-        message.clear();
-
-        const int choice = UI::readChoice(UI::paint("  选择 > ", UI::Color::BrightGreen), 0, 6);
-        switch (choice) {
-            case 1:
-                showStatusScreen();
-                break;
-            case 2:
-                showInventoryScreen();
-                break;
-            case 3:
-                if (shopAvailable_) {
-                    showShop();
-                } else {
-                    showTrader();
-                }
-                break;
-            case 4:
-                showCampTalk();
-                break;
-            case 5:
-                message = explore();
-                refreshCampShop();
-                break;
-            case 6:
-                player_.restoreAll();
-                message = "你在火堆旁休息，HP 与 MP 已完全恢复。";
-                refreshCampShop();
-                break;
-            case 0:
-            case -1:
-                running = false;
-                break;
-            default:
-                break;
-        }
-
-        if (running) {
-            std::string saveError;
-            if (!SaveGame::save(player_, saveError)) {
-                message = "自动存档失败：" + saveError;
-            }
-        }
-    }
-
-    std::string saveError;
-    std::string warning;
-    if (!SaveGame::save(player_, saveError)) {
-        warning = "自动存档失败：" + saveError;
-    }
-    renderFarewell(warning);
+    showGroundHub();
 }
 
 void Game::showTitleScreen() const {
@@ -1288,6 +1320,7 @@ bool Game::showStoryBeat() {
 
     ++storyStage_;
     saveStoryProgress(player_.getName(), storyStage_, storyEnding_, storyFlags_);
+    unlockJournal("clue." + std::to_string(storyStage_));
     return true;
 }
 
@@ -1463,7 +1496,7 @@ void Game::renderCamp(const std::string& message) const {
 
     Frame frame;
     frame.addColumns(
-        UI::paint("城内 · 营地", UI::Color::BrightCyan),
+        UI::paint("地面枢纽 · 废墟营地", UI::Color::BrightCyan),
         UI::paint("金币 " + std::to_string(player_.getGold()) +
                   "    背包 " + std::to_string(player_.getInventory().size()) + "/" +
                   std::to_string(player_.getInventory().capacity()),
@@ -1555,9 +1588,10 @@ void Game::renderCamp(const std::string& message) const {
         exploreLabel = "进入核心";
     }
     frame.addLine(
-        UI::paint("[5]", UI::Color::BrightYellow) + " " + exploreLabel + "   " +
-        UI::paint("[6]", UI::Color::BrightYellow) + " 休息   " +
-        UI::paint("[0]", UI::Color::BrightYellow) + " 离开（自动存档）");
+        UI::paint("[5]", UI::Color::BrightYellow) + " 见闻   " +
+        UI::paint("[6]", UI::Color::BrightYellow) + " " + exploreLabel + "   " +
+        UI::paint("[7]", UI::Color::BrightYellow) + " 休息   " +
+        UI::paint("[0]", UI::Color::BrightYellow) + " 返回枢纽（自动存档）");
 
     if (typedRows.empty()) {
         frame.render();
@@ -1808,6 +1842,7 @@ void Game::showAncestorRoom() {
     frame.renderTypewriter(typedRows);
 
     setStoryFlag("ancestor.found");
+    unlockJournal("ancestor.room");
 
     const int choice = UI::readChoice(
         UI::paint("  选择 > ", UI::Color::BrightGreen), 0, 1);
@@ -1838,6 +1873,7 @@ void Game::showAncestorRoom() {
         "  按回车继续 > ");
 
     setStoryFlag("ancestor.read");
+    unlockJournal("ancestor.truth");
 }
 
 bool Game::handleCorridorDoor(int& floor, std::string& message) {
@@ -2132,6 +2168,7 @@ void Game::showCampTalk() {
                 survivorTalked_ = true;
                 setStoryFlag("talk.disaster");
                 setStoryFlag("talk.survivor");
+                unlockJournal("talk.disaster");
                 if (storyStage_ >= kStoryClueCount + 1) {
                     if (storyEnding_ == 1) {
                         message = "炉子停了。雪还在下，但至少不像有人在下面喘气了。";
@@ -2156,6 +2193,7 @@ void Game::showCampTalk() {
                 survivorTalked_ = true;
                 setStoryFlag("talk.ruins");
                 setStoryFlag("talk.survivor");
+                unlockJournal("talk.ruins");
                 if (storyStage_ >= kStoryClueCount + 1) {
                     if (storyEnding_ == 1) {
                         message = "核心已经封了。你出来的时候，脸上像老了好几岁。";
@@ -2180,6 +2218,7 @@ void Game::showCampTalk() {
                 survivorTalked_ = true;
                 setStoryFlag("talk.knights");
                 setStoryFlag("talk.survivor");
+                unlockJournal("talk.knights");
                 if (storyStage_ >= kStoryClueCount + 1) {
                     if (storyEnding_ == 1) {
                         message = "骑士都停了。至少，没人再听见甲胄的声音。";
@@ -2201,6 +2240,373 @@ void Game::showCampTalk() {
                 break;
         }
     }
+}
+
+void Game::unlockJournal(const std::string& id) {
+    setStoryFlag("journal." + id);
+}
+
+void Game::showJournal() {
+    const std::vector<JournalEntry>& catalog = journalEntries();
+
+    while (true) {
+        std::vector<const JournalEntry*> unlocked;
+        for (const JournalEntry& entry : catalog) {
+            if (hasStoryFlag("journal." + entry.id)) {
+                unlocked.push_back(&entry);
+            }
+        }
+
+        UI::clearScreen();
+        Frame frame;
+        frame.addColumns(
+            UI::paint("见闻", UI::Color::BrightCyan),
+            UI::paint("已收集 " + std::to_string(unlocked.size()) + " / " +
+                          std::to_string(catalog.size()),
+                      UI::Color::Gray),
+            65);
+        frame.addDivider();
+        frame.addBlank();
+
+        if (unlocked.empty()) {
+            frame.addLine("还没有见闻。去和营地里的人聊聊，或者深入遗迹。");
+        } else {
+            for (int index = 0; index < static_cast<int>(unlocked.size()); ++index) {
+                const JournalEntry& entry = *unlocked[static_cast<std::size_t>(index)];
+                const bool unread = !hasStoryFlag("journalread." + entry.id);
+                std::string line = UI::paint("[" + std::to_string(index + 1) + "]",
+                                             UI::Color::BrightYellow) +
+                                   " ";
+                if (unread) {
+                    line += UI::paint("[新] ", UI::Color::BrightGreen);
+                }
+                line += UI::paint("[" + entry.category + "] ", UI::Color::Gray) +
+                        entry.title;
+                frame.addLine(line);
+            }
+        }
+
+        frame.addBlank();
+        frame.addDivider();
+        frame.addLine(UI::paint("[0]", UI::Color::BrightYellow) + " 返回");
+        frame.render();
+
+        const int choice = UI::readChoice(
+            UI::paint("  选择 > ", UI::Color::BrightGreen), 0,
+            static_cast<int>(unlocked.size()));
+        if (choice == 0 || choice == -1) {
+            return;
+        }
+
+        const JournalEntry& entry = *unlocked[static_cast<std::size_t>(choice - 1)];
+        showStoryPage(entry.category + " · " + entry.title, entry.lines,
+                      UI::Color::BrightCyan, "  按回车返回见闻 > ");
+        setStoryFlag("journalread." + entry.id);
+    }
+}
+
+void Game::renderHub(int locationIndex, int playerScreen,
+                     const std::string& message) const {
+    const std::vector<std::string>& names = hubLocationNames();
+    const std::vector<int>& positions = hubLocationPositions();
+
+    UI::clearScreen();
+    Frame frame;
+    frame.addColumns(
+        UI::paint("地面枢纽 · 灰烬街道", UI::Color::BrightCyan),
+        UI::paint("位置：" + names[static_cast<std::size_t>(locationIndex)] +
+                      "    金币 " + std::to_string(player_.getGold()),
+                  UI::Color::Yellow),
+        55);
+    frame.addDivider();
+    frame.addBlank();
+
+    constexpr int kSceneRows = 6;
+    std::vector<std::string> scene(kSceneRows);
+    const auto put = [&](int row, int column, const std::string& text) {
+        if (row < 0 || row >= kSceneRows || column < 0 || column >= 99) {
+            return;
+        }
+        appendAtColumn(scene[static_cast<std::size_t>(row)], text, column);
+    };
+
+    // 路灯像通道火把一样是两行：灯 / 柱。
+    for (int x : {10, 30, 50, 70, 90}) {
+        put(0, x, UI::paint("灯", UI::Color::BrightYellow));
+        put(1, x, UI::paint("柱", UI::Color::Gray));
+    }
+
+    const std::vector<std::string> playerArt = PlayerSprite::lines(player_);
+    for (int index = 0; index < 4; ++index) {
+        put(2 + index, playerScreen, playerArt[static_cast<std::size_t>(index)]);
+    }
+
+    for (const std::string& row : scene) {
+        frame.addLine(row);
+    }
+
+    frame.addLine(UI::paint(floorLine(92), UI::Color::Gray));
+
+    std::string labelRow;
+    for (int index = 0; index < static_cast<int>(positions.size()); ++index) {
+        const UI::Color color = (index == locationIndex)
+                                    ? UI::Color::BrightCyan
+                                    : UI::Color::Gray;
+        appendAtColumn(labelRow, UI::paint(names[static_cast<std::size_t>(index)], color),
+                       positions[static_cast<std::size_t>(index)]);
+    }
+    frame.addLine(labelRow);
+
+    frame.addBlank();
+    frame.addWrapped(message.empty()
+                         ? "灰烬落在路灯下。四处的门都半掩着，街道尽头是封闭的高塔。"
+                         : message,
+                     "  ");
+    frame.addBlank();
+    frame.addDivider();
+    frame.addLine(
+        UI::paint("[1]", UI::Color::BrightYellow) + " 向左   " +
+        UI::paint("[2]", UI::Color::BrightYellow) + " 向右   " +
+        UI::paint("[3]", UI::Color::BrightYellow) + " 交互   " +
+        UI::paint("[4]", UI::Color::BrightYellow) + " 见闻   " +
+        UI::paint("[0]", UI::Color::BrightYellow) + " 离开游戏");
+    frame.render();
+}
+
+void Game::showGroundHub() {
+    const std::vector<int>& positions = hubLocationPositions();
+    int location = 0;
+    std::string message = "灰烬落在路灯下。你回到地面枢纽。";
+    bool running = true;
+
+    const auto saveAfterAction = [&]() {
+        std::string error;
+        if (!SaveGame::save(player_, error)) {
+            message = "自动存档失败：" + error;
+        }
+    };
+
+    const auto animateMove = [&](int from, int to) {
+        if (!UI::isInteractive()) {
+            return;
+        }
+        constexpr int kFrames = 5;
+        for (int frame = 1; frame <= kFrames; ++frame) {
+            const int column = positions[static_cast<std::size_t>(from)] +
+                               (positions[static_cast<std::size_t>(to)] -
+                                positions[static_cast<std::size_t>(from)]) *
+                                   frame / kFrames;
+            renderHub(from, column, "");
+            UI::sleepFor(45);
+        }
+    };
+
+    while (running) {
+        renderHub(location, positions[static_cast<std::size_t>(location)], message);
+        message.clear();
+
+        const int choice = UI::readChoice(
+            UI::paint("  选择 > ", UI::Color::BrightGreen), 0, 4);
+        switch (choice) {
+            case 1:
+                if (location == 0) {
+                    message = "已经到街道最左边了。";
+                } else {
+                    animateMove(location, location - 1);
+                    --location;
+                    message = "你沿着街道向左走。";
+                }
+                break;
+            case 2:
+                if (location + 1 >= static_cast<int>(positions.size())) {
+                    message = "已经到街道最右边了。";
+                } else {
+                    animateMove(location, location + 1);
+                    ++location;
+                    message = "你沿着街道向右走。";
+                }
+                break;
+            case 3:
+                if (location == 0) {
+                    if (shopAvailable_) {
+                        showShop();
+                    } else {
+                        showTrader();
+                    }
+                    message = "你从集市回到灰烬街道。";
+                } else if (location == 1) {
+                    showCampMenu();
+                    message = "你从废墟营地回到灰烬街道。";
+                } else if (location == 2) {
+                    showTavern();
+                    message = "你从酒馆回到灰烬街道。";
+                } else {
+                    showTowerGate();
+                    message = "你回到灰烬街道。";
+                }
+                break;
+            case 4:
+                showJournal();
+                message = "你合上见闻记录。";
+                break;
+            case 0:
+            case -1:
+                running = false;
+                break;
+            default:
+                break;
+        }
+
+        if (running) {
+            saveAfterAction();
+        }
+    }
+
+    std::string saveError;
+    std::string warning;
+    if (!SaveGame::save(player_, saveError)) {
+        warning = "自动存档失败：" + saveError;
+    }
+    renderFarewell(warning);
+}
+
+void Game::showTavern() {
+    std::string message = "酒馆老板擦着杯子。‘火山灰把路都埋了，进来坐坐？’";
+
+    while (true) {
+        UI::clearScreen();
+        Frame frame;
+        frame.addColumns(
+            UI::paint("地面枢纽 · 酒馆", UI::Color::BrightCyan),
+            UI::paint("金币 " + std::to_string(player_.getGold()), UI::Color::Yellow),
+            55);
+        frame.addDivider();
+        frame.addBlank();
+
+        const std::vector<std::string>& keeper = Sprites::merchant();
+        for (const std::string& line : keeper) {
+            frame.addCentered(UI::paint(line, UI::Color::Yellow));
+        }
+        frame.addCentered(UI::paint("酒馆老板", UI::Color::Yellow));
+        frame.addBlank();
+        frame.addWrapped(message, "  ");
+        frame.addBlank();
+        frame.addDivider();
+        frame.addLine(
+            UI::paint("[1]", UI::Color::BrightYellow) + " 休息（5 金币）   " +
+            UI::paint("[2]", UI::Color::BrightYellow) + " 打听消息   " +
+            UI::paint("[3]", UI::Color::BrightYellow) + " 见闻   " +
+            UI::paint("[0]", UI::Color::BrightYellow) + " 返回街道");
+        frame.render();
+
+        const int choice = UI::readChoice(
+            UI::paint("  选择 > ", UI::Color::BrightGreen), 0, 3);
+        if (choice == 0 || choice == -1) {
+            return;
+        }
+        if (choice == 1) {
+            if (!player_.spendGold(5)) {
+                message = "金币不够。老板说：‘先去找点活干吧。’";
+            } else {
+                player_.restoreAll();
+                message = "你靠在墙角睡了一会儿。HP 与 MP 已完全恢复。";
+            }
+        } else if (choice == 2) {
+            unlockJournal("tavern.ash");
+            showStoryPage(
+                "酒馆 · 火山灰",
+                {
+                    "老板说，地震撕开山体后，火山灰就再没真正散过。",
+                    "居民外出必须戴面具，身份牌只负责登记，不再代替脸。",
+                    "他还说，地下五层有一扇被钉死的门，只有少数人知道。"
+                },
+                UI::Color::BrightYellow,
+                "  按回车继续 > ");
+            message = "老板压低了声音，又擦起了杯子。";
+        } else if (choice == 3) {
+            showJournal();
+            message = "你合上见闻记录。";
+        }
+    }
+}
+
+void Game::showTowerGate() {
+    unlockJournal("tower.gate");
+    showStoryPage(
+        "地面枢纽 · 高塔",
+        {
+            "高塔入口被灰烬和锁链封住。",
+            "塔顶偶尔有金属反光，但暂时上不去。",
+            "这里以后会通向征服骑士。"
+        },
+        UI::Color::Gray,
+        "  按回车返回街道 > ");
+}
+
+void Game::showCampMenu() {
+    std::string message;
+    if (storyStage_ >= kStoryClueCount + 1) {
+        message = endingCampLine(storyEnding_);
+    } else if (storyStage_ == kStoryClueCount) {
+        message = "核心的门已经打开。最深处传来缓慢的脉动。";
+    } else {
+        message = "你在废墟营地的火堆旁坐下。";
+    }
+
+    bool running = true;
+    while (running) {
+        renderCamp(message);
+        message.clear();
+
+        const int choice = UI::readChoice(
+            UI::paint("  选择 > ", UI::Color::BrightGreen), 0, 7);
+        switch (choice) {
+            case 1:
+                showStatusScreen();
+                break;
+            case 2:
+                showInventoryScreen();
+                break;
+            case 3:
+                if (shopAvailable_) {
+                    showShop();
+                } else {
+                    showTrader();
+                }
+                break;
+            case 4:
+                showCampTalk();
+                break;
+            case 5:
+                showJournal();
+                break;
+            case 6:
+                message = explore();
+                refreshCampShop();
+                break;
+            case 7:
+                player_.restoreAll();
+                message = "你在火堆旁休息，HP 与 MP 已完全恢复。";
+                refreshCampShop();
+                break;
+            case 0:
+            case -1:
+                running = false;
+                break;
+            default:
+                break;
+        }
+
+        if (running) {
+            std::string saveError;
+            if (!SaveGame::save(player_, saveError)) {
+                message = "自动存档失败：" + saveError;
+            }
+        }
+    }
+
+    std::string saveError;
+    SaveGame::save(player_, saveError);
 }
 
 void Game::showShop() {

@@ -51,7 +51,15 @@ private:
     bool enterCore();
     void showEnding(int choice) const;
     void renderCamp(const std::string& message) const;
+    void showCampMenu();
     void showCampTalk();
+    void showGroundHub();
+    void renderHub(int locationIndex, int playerScreen,
+                   const std::string& message) const;
+    void showTavern();
+    void showTowerGate();
+    void showJournal();
+    void unlockJournal(const std::string& id);
     void renderCorridor(int floor, int depth, int areaStage,
                         int playerScreen = 4, int camera = 0,
                         const std::vector<std::string>* previewArt = nullptr,
