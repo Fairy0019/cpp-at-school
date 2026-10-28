@@ -531,6 +531,28 @@ std::string corpseHint(int stage) {
     }
 }
 
+std::string shortMonsterName(const std::string& name) {
+    if (name == "遗迹鼠") {
+        return "鼠";
+    }
+    if (name == "水史莱姆") {
+        return "水怪";
+    }
+    if (name == "火史莱姆") {
+        return "火怪";
+    }
+    if (name == "哥布林") {
+        return "哥布";
+    }
+    if (name == "封存骑士") {
+        return "骑士";
+    }
+    if (name == "宝箱怪") {
+        return "箱怪";
+    }
+    return "怪物";
+}
+
 std::string trimText(const std::string& text) {
     std::size_t begin = 0;
     while (begin < text.size() && std::isspace(static_cast<unsigned char>(text[begin]))) {
@@ -1539,7 +1561,10 @@ void Game::renderCamp(const std::string& message) const {
     }
 }
 
-void Game::renderCorridor(int floor, int depth, int areaStage, int playerColumn) const {
+void Game::renderCorridor(int floor, int depth, int areaStage,
+                          int playerScreen, int camera,
+                          const std::string& previewText,
+                          UI::Color previewColor) const {
     UI::clearScreen();
 
     const AreaInfo& area = areaForStage(areaStage);
@@ -1559,21 +1584,30 @@ void Game::renderCorridor(int floor, int depth, int areaStage, int playerColumn)
 
     const std::vector<std::string> playerArt = PlayerSprite::lines(player_);
 
-    const auto torchLine = [](const std::string& text) {
-        std::string line;
-        appendAtColumn(line, UI::paint(text, UI::Color::Yellow), 18);
-        appendAtColumn(line, UI::paint(text, UI::Color::Yellow), 48);
-        appendAtColumn(line, UI::paint(text, UI::Color::Yellow), 84);
-        return line;
-    };
-
-    frame.addLine(torchLine("火"));
-
+    std::string fireRow;
+    std::string handleRow;
     std::vector<std::pair<int, std::string>> headParts;
-    headParts.emplace_back(18, UI::paint("把", UI::Color::Yellow));
-    headParts.emplace_back(48, UI::paint("把", UI::Color::Yellow));
-    headParts.emplace_back(playerColumn, playerArt[0]);
-    headParts.emplace_back(84, UI::paint("把", UI::Color::Yellow));
+
+    // 火把在通道里的世界坐标固定为每 36 列一支；镜头移动时整体左移。
+    for (int worldX = 18; worldX < 220; worldX += 36) {
+        const int screenX = worldX - camera;
+        if (screenX < 0 || screenX >= 99) {
+            continue;
+        }
+        appendAtColumn(fireRow, UI::paint("火", UI::Color::Yellow), screenX);
+        appendAtColumn(handleRow, UI::paint("把", UI::Color::Yellow), screenX);
+        headParts.emplace_back(screenX, UI::paint("把", UI::Color::Yellow));
+    }
+
+    if (!previewText.empty()) {
+        const int previewX = 94 - camera;
+        if (previewX >= 0 && previewX < 99) {
+            appendAtColumn(fireRow, UI::paint(previewText, previewColor), previewX);
+        }
+    }
+    frame.addLine(fireRow);
+
+    headParts.emplace_back(playerScreen, playerArt[0]);
     std::stable_sort(headParts.begin(), headParts.end(),
                      [](const std::pair<int, std::string>& left,
                         const std::pair<int, std::string>& right) {
@@ -1586,13 +1620,13 @@ void Game::renderCorridor(int floor, int depth, int areaStage, int playerColumn)
     frame.addLine(headRow);
 
     for (int index = 1; index < 4; ++index) {
-        frame.addLine(sceneRow(playerArt[static_cast<std::size_t>(index)], playerColumn,
+        frame.addLine(sceneRow(playerArt[static_cast<std::size_t>(index)], playerScreen,
                                std::string(), 0));
     }
 
     frame.addLine(UI::paint(floorLine(92), UI::Color::Gray));
     frame.addLine(sceneRow(
-        UI::paint(player_.getName(), UI::Color::BrightCyan), playerColumn,
+        UI::paint(player_.getName(), UI::Color::BrightCyan), playerScreen,
         UI::paint("通道", UI::Color::Yellow), 84));
 
     frame.addBlank();
@@ -1606,23 +1640,6 @@ void Game::renderCorridor(int floor, int depth, int areaStage, int playerColumn)
         UI::paint("[4]", UI::Color::BrightYellow) + " 返回营地");
 
     frame.render();
-}
-
-void Game::animateCorridorStep(int floor, int depth, int areaStage, bool moveRight) const {
-    if (!UI::isInteractive()) {
-        renderCorridor(floor, depth, areaStage);
-        return;
-    }
-
-    constexpr int kFrames = 5;
-    const int startColumn = 48;
-    const int targetColumn = moveRight ? 60 : 36;
-    for (int frame = 1; frame <= kFrames; ++frame) {
-        const int column = startColumn + (targetColumn - startColumn) * frame / kFrames;
-        renderCorridor(floor, depth, areaStage, column);
-        UI::sleepFor(55);
-    }
-    renderCorridor(floor, depth, areaStage);
 }
 
 void Game::handleCorridorTrap(int floor) {
@@ -2638,8 +2655,128 @@ std::string Game::explore() {
         showResult("胜  利", lines, UI::Color::BrightYellow);
     };
 
+    enum class PendingEvent {
+        None,
+        Monster,
+        Door,
+        Trap,
+        CaveIn,
+        Corpse,
+        Quiet,
+        Boss
+    };
+
+    struct Pose {
+        int playerScreen;
+        int camera;
+    };
+    static const Pose poses[6] = {
+        {8, 0},
+        {30, 0},
+        {48, 0},
+        {48, 12},
+        {48, 24},
+        {48, 36}
+    };
+
+    PendingEvent pending = PendingEvent::None;
+    std::unique_ptr<Monster> pendingMonster;
+    std::string previewText;
+    UI::Color previewColor = UI::Color::Gray;
+    int step = 0;
+    int eventsResolved = 0;
+
+    const auto rollNextEvent = [&]() {
+        step = 0;
+        pendingMonster.reset();
+        previewText.clear();
+        previewColor = UI::Color::Gray;
+
+        if (bossRun && !bossDefeated && eventsResolved >= 2) {
+            pending = PendingEvent::Boss;
+            previewText = "骑士";
+            previewColor = UI::Color::BrightMagenta;
+            return;
+        }
+
+        const int monsterChance = 25;
+        const int doorChance = 15 + std::min(depth, 6) * 2;
+        const int trapChance = 12;
+        const int caveChance = 8;
+        const int corpseChance = 10;
+        const int roll = Random::integer(0, 99);
+
+        if (roll < monsterChance) {
+            pending = PendingEvent::Monster;
+            pendingMonster = createRandomMonster(floor);
+            previewText = shortMonsterName(pendingMonster->getName());
+            previewColor = MonsterVisual::tint(pendingMonster->getColor());
+            return;
+        }
+
+        int threshold = monsterChance + doorChance;
+        if (roll < threshold) {
+            pending = PendingEvent::Door;
+            previewText = "门";
+            previewColor = UI::Color::Yellow;
+            return;
+        }
+
+        threshold += trapChance;
+        if (roll < threshold) {
+            pending = PendingEvent::Trap;
+            previewText = "陷阱";
+            previewColor = UI::Color::BrightRed;
+            return;
+        }
+
+        threshold += caveChance;
+        if (roll < threshold) {
+            pending = PendingEvent::CaveIn;
+            previewText = "塌方";
+            previewColor = UI::Color::BrightYellow;
+            return;
+        }
+
+        threshold += corpseChance;
+        if (roll < threshold) {
+            pending = PendingEvent::Corpse;
+            previewText = "尸体";
+            previewColor = UI::Color::Gray;
+            return;
+        }
+
+        pending = PendingEvent::Quiet;
+    };
+
+    const auto animateToStep = [&](int from, int to) {
+        if (!UI::isInteractive()) {
+            renderCorridor(floor, depth, runStage, poses[to].playerScreen,
+                           poses[to].camera, previewText, previewColor);
+            return;
+        }
+
+        constexpr int kFrames = 5;
+        for (int frame = 1; frame <= kFrames; ++frame) {
+            const int playerScreen =
+                poses[from].playerScreen +
+                (poses[to].playerScreen - poses[from].playerScreen) * frame / kFrames;
+            const int camera =
+                poses[from].camera +
+                (poses[to].camera - poses[from].camera) * frame / kFrames;
+            renderCorridor(floor, depth, runStage, playerScreen, camera,
+                           previewText, previewColor);
+            UI::sleepFor(45);
+        }
+        renderCorridor(floor, depth, runStage, poses[to].playerScreen,
+                       poses[to].camera, previewText, previewColor);
+    };
+
+    rollNextEvent();
+
     while (true) {
-        renderCorridor(floor, depth, runStage);
+        renderCorridor(floor, depth, runStage, poses[step].playerScreen,
+                       poses[step].camera, previewText, previewColor);
 
         const int choice = UI::readChoice(
             UI::paint("  选择 > ", UI::Color::BrightGreen), 1, 4);
@@ -2657,127 +2794,133 @@ std::string Game::explore() {
         }
 
         ++depth;
-        animateCorridorStep(floor, depth, runStage, depth % 2 == 0);
-
-        // 三灾仍可能在通道里发生；非战斗事件最多把人压到 1 HP。
-        if (Random::chance(0.28)) {
-            triggerTravelDisaster();
+        if (step < 5) {
+            animateToStep(step, step + 1);
+            ++step;
+            if (Random::chance(0.08)) {
+                triggerTravelDisaster();
+            }
+            if (step < 5) {
+                continue;
+            }
         }
 
-        // 第 8 段线索前的核心门厅：走到一定深度后固定遭遇封存骑士。
-        if (bossRun && !bossDefeated && depth >= 3) {
-            showStoryPage(
-                "核心门前",
-                {
-                    "通道在尽头收窄，一扇没有把手的门嵌在岩壁里。",
-                    "锁链已经松开，门后传来沉重而缓慢的呼吸声。",
-                    "封存骑士从黑暗里驶出。它仍守着旧王朝的最后一道命令。"
-                },
-                UI::Color::BrightMagenta,
-                "  按回车迎战 > ");
+        switch (pending) {
+            case PendingEvent::Monster: {
+                if (!pendingMonster) {
+                    break;
+                }
+                showEncounterCutscene(*pendingMonster);
 
-            std::unique_ptr<Monster> boss = createGuardian();
-            showEncounterCutscene(*boss);
+                Battle battle(player_, storyStage_);
+                const BattleResult result = battle.fight(*pendingMonster);
+                if (result == BattleResult::Victory) {
+                    grantVictoryRewards(*pendingMonster);
+                    if (!clueFound && !bossRun) {
+                        showStoryBeat();
+                        clueFound = true;
+                    }
+                    break;
+                }
+                if (result == BattleResult::Defeat) {
+                    return handleDefeat(pendingMonster->getName());
+                }
 
-            Battle battle(player_, storyStage_);
-            const BattleResult result = battle.fight(*boss);
-            if (result == BattleResult::Victory) {
-                grantVictoryRewards(*boss);
-                bossDefeated = true;
+                showReturnCutscene();
+                return "你退回通道，决定先回营地。";
+            }
+
+            case PendingEvent::Boss: {
                 showStoryPage(
-                    "守护者 · 封存解除",
+                    "核心门前",
                     {
-                        "封存骑士的甲胄从胸口裂开。里面没有身体，只有一枚停转的齿轮。",
-                        "它最后重复了一次旧命令：‘封存……完成。’",
-                        "挡在门前的锁链松开了一道。门上的识别装置随即亮起。"
+                        "通道在尽头收窄，一扇没有把手的门嵌在岩壁里。",
+                        "锁链已经松开，门后传来沉重而缓慢的呼吸声。",
+                        "封存骑士从黑暗里驶出。它仍守着旧王朝的最后一道命令。"
                     },
                     UI::Color::BrightMagenta,
+                    "  按回车迎战 > ");
+
+                std::unique_ptr<Monster> boss = createGuardian();
+                showEncounterCutscene(*boss);
+
+                Battle battle(player_, storyStage_);
+                const BattleResult result = battle.fight(*boss);
+                if (result == BattleResult::Victory) {
+                    grantVictoryRewards(*boss);
+                    bossDefeated = true;
+                    showStoryPage(
+                        "守护者 · 封存解除",
+                        {
+                            "封存骑士的甲胄从胸口裂开。里面没有身体，只有一枚停转的齿轮。",
+                            "它最后重复了一次旧命令：‘封存……完成。’",
+                            "挡在门前的锁链松开了一道。门上的识别装置随即亮起。"
+                        },
+                        UI::Color::BrightMagenta,
+                        "  按回车继续 > ");
+                    if (!clueFound) {
+                        showStoryBeat();
+                        clueFound = true;
+                    }
+                    break;
+                }
+                if (result == BattleResult::Defeat) {
+                    return handleDefeat(boss->getName());
+                }
+
+                showReturnCutscene();
+                return "你退回通道。封存骑士仍守在核心门前。";
+            }
+
+            case PendingEvent::Door: {
+                std::string doorMessage;
+                if (!handleCorridorDoor(floor, doorMessage)) {
+                    return doorMessage;
+                }
+                break;
+            }
+
+            case PendingEvent::Trap:
+                handleCorridorTrap(floor);
+                break;
+
+            case PendingEvent::CaveIn: {
+                int nextFloor = floor;
+                handleCorridorCaveIn(floor, nextFloor);
+                floor = nextFloor;
+                break;
+            }
+
+            case PendingEvent::Corpse:
+                handleCorridorCorpse();
+                break;
+
+            case PendingEvent::Quiet: {
+                static const std::vector<std::string> quietLines = {
+                    "你继续往前走。火把的光只够照亮脚下几步。",
+                    "通道里只有水滴声。你听了一会儿，确定那不是脚步。",
+                    "墙上有一道旧裂缝，形状像某种被遗忘的文字。",
+                    "你停下来辨认方向。回声从更深的地方传回来。"
+                };
+                showStoryPage(
+                    "通道",
+                    {quietLines[static_cast<std::size_t>(
+                        Random::integer(0, static_cast<int>(quietLines.size()) - 1))]},
+                    UI::Color::Gray,
                     "  按回车继续 > ");
-                if (!clueFound) {
-                    showStoryBeat();
-                    clueFound = true;
-                }
-                continue;
+                break;
             }
 
-            if (result == BattleResult::Defeat) {
-                return handleDefeat(boss->getName());
-            }
-
-            showReturnCutscene();
-            return "你退回通道。封存骑士仍守在核心门前。";
+            case PendingEvent::None:
+                break;
         }
 
-        const int monsterChance = 25;
-        const int doorChance = 15 + std::min(depth, 6) * 2;
-        const int trapChance = 12;
-        const int caveChance = 8;
-        const int corpseChance = 10;
+        ++eventsResolved;
 
-        const int roll = Random::integer(0, 99);
-        if (roll < monsterChance) {
-            std::unique_ptr<Monster> monster = createRandomMonster(floor);
-            showEncounterCutscene(*monster);
-
-            Battle battle(player_, storyStage_);
-            const BattleResult result = battle.fight(*monster);
-            if (result == BattleResult::Victory) {
-                grantVictoryRewards(*monster);
-                if (!clueFound && !bossRun) {
-                    showStoryBeat();
-                    clueFound = true;
-                }
-                continue;
-            }
-
-            if (result == BattleResult::Defeat) {
-                return handleDefeat(monster->getName());
-            }
-
-            showReturnCutscene();
-            return "你退回通道，决定先回营地。";
-        }
-
-        int threshold = monsterChance + doorChance;
-        if (roll < threshold) {
-            std::string doorMessage;
-            if (!handleCorridorDoor(floor, doorMessage)) {
-                return doorMessage;
-            }
-            continue;
-        }
-
-        threshold += trapChance;
-        if (roll < threshold) {
-            handleCorridorTrap(floor);
-            continue;
-        }
-
-        threshold += caveChance;
-        if (roll < threshold) {
-            int nextFloor = floor;
-            handleCorridorCaveIn(floor, nextFloor);
-            floor = nextFloor;
-            continue;
-        }
-
-        threshold += corpseChance;
-        if (roll < threshold) {
-            handleCorridorCorpse();
-            continue;
-        }
-
-        static const std::vector<std::string> quietLines = {
-            "你继续往前走。火把的光只够照亮脚下几步。",
-            "通道里只有水滴声。你听了一会儿，确定那不是脚步。",
-            "墙上有一道旧裂缝，形状像某种被遗忘的文字。",
-            "你停下来辨认方向。回声从更深的地方传回来。"
-        };
-        showStoryPage("通道", {quietLines[static_cast<std::size_t>(
-                                   Random::integer(0, static_cast<int>(quietLines.size()) - 1))]},
-                      UI::Color::Gray, "  按回车继续 > ");
+        rollNextEvent();
     }
 }
+
 
 void Game::renderFarewell(const std::string& warning) const {
     UI::clearScreen();
