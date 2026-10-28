@@ -34,12 +34,12 @@ constexpr const char* kStoryProgressFile = "story_progress.sav";
 constexpr int kStoryClueCount = 8;
 
 const std::vector<std::string>& hubLocationNames() {
-    static const std::vector<std::string> names = {"集市", "营地", "酒馆", "高塔"};
+    static const std::vector<std::string> names = {"城门", "商店", "营地", "酒馆", "高塔"};
     return names;
 }
 
 const std::vector<int>& hubLocationPositions() {
-    static const std::vector<int> positions = {20, 42, 64, 86};
+    static const std::vector<int> positions = {14, 34, 54, 74, 90};
     return positions;
 }
 
@@ -417,6 +417,14 @@ const std::vector<JournalEntry>& journalEntries() {
             }
         });
         entries.push_back({
+            "relic.slate", "古物", "刻纹石板",
+            {
+                "地面商店老板认出这是一块古国刻纹石板。",
+                "上面记着地下五层的一条旧矿井路线，以及一间被钉死的休息室。",
+                "老板年轻时挖过几年遗址，收下石板并给了你九折优惠。"
+            }
+        });
+        entries.push_back({
             "tavern.ash", "传闻", "酒馆里的火山灰",
             {
                 "酒馆老板说，地震撕开山体后，火山灰就再没真正散过。",
@@ -569,10 +577,14 @@ std::string repeatText(const std::string& unit, int count) {
     return result;
 }
 
-std::string shopItemLine(int index, const Item& item) {
+std::string shopItemLine(int index, const Item& item, bool discounted) {
+    int price = item.getPrice();
+    if (discounted) {
+        price = std::max(1, price * 9 / 10);
+    }
     return UI::paint("[" + std::to_string(index) + "]", UI::Color::BrightYellow) + " " +
            UI::padRight(item.getName(), 8) + "  " +
-           UI::padRight(std::to_string(item.getPrice()) + " 金币", 8) + "  " +
+           UI::padRight(std::to_string(price) + " 金币", 8) + "  " +
            item.getDescription();
 }
 
@@ -582,6 +594,8 @@ std::string inventoryItemLine(int index, const Item& item, bool selling) {
                        item.getDescription();
     if (item.getKind() == ItemKind::Material) {
         line += "  [材料]";
+    } else if (item.getKind() == ItemKind::Relic) {
+        line += "  [遗物]";
     } else if (item.getKind() != ItemKind::Consumable) {
         line += "  [装备]";
     }
@@ -1334,6 +1348,29 @@ void Game::setStoryFlag(const std::string& flag) {
     }
 }
 
+bool Game::hasRelic() const {
+    const auto& items = player_.getInventory().getItems();
+    for (const std::unique_ptr<Item>& item : items) {
+        if (item->getKind() == ItemKind::Relic) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Game::takeRelic(std::string& relicName) {
+    Inventory& inventory = player_.getInventory();
+    for (int index = 0; index < inventory.size(); ++index) {
+        const Item* item = inventory.getItem(index);
+        if (item != nullptr && item->getKind() == ItemKind::Relic) {
+            relicName = item->getName();
+            inventory.takeItem(index);
+            return true;
+        }
+    }
+    return false;
+}
+
 void Game::showAreaIntro(int stage) const {
     const AreaInfo& area = areaForStage(stage);
     showStoryPage(area.act + " · " + area.name, area.intro, UI::Color::BrightCyan,
@@ -1872,6 +1909,29 @@ void Game::showAncestorRoom() {
         UI::Color::BrightYellow,
         "  按回车继续 > ");
 
+    if (!hasRelic()) {
+        if (!player_.getInventory().canAdd()) {
+            showStoryPage(
+                "获得 · 刻纹石板",
+                {
+                    "你在遗骸下面摸到一块石板，但背包已经满了。",
+                    "你记住了位置，决定下次再来取。"
+                },
+                UI::Color::BrightCyan,
+                "  按回车继续 > ");
+            return;
+        }
+        player_ + std::make_unique<Relic>("刻纹石板", 80);
+        showStoryPage(
+            "获得 · 刻纹石板",
+            {
+                "你在遗骸下面摸到一块石板，表面刻满细密的古国文字。",
+                "普通拾荒者大概不敢收这种东西。地面商店的老板也许能看懂。"
+            },
+            UI::Color::BrightCyan,
+            "  按回车继续 > ");
+    }
+
     setStoryFlag("ancestor.read");
     unlockJournal("ancestor.truth");
 }
@@ -2321,7 +2381,7 @@ void Game::renderHub(int locationIndex, int playerScreen,
     frame.addDivider();
     frame.addBlank();
 
-    constexpr int kSceneRows = 6;
+    constexpr int kSceneRows = 7;
     std::vector<std::string> scene(kSceneRows);
     const auto put = [&](int row, int column, const std::string& text) {
         if (row < 0 || row >= kSceneRows || column < 0 || column >= 99) {
@@ -2330,15 +2390,16 @@ void Game::renderHub(int locationIndex, int playerScreen,
         appendAtColumn(scene[static_cast<std::size_t>(row)], text, column);
     };
 
-    // 路灯像通道火把一样是两行：灯 / 柱。
-    for (int x : {10, 30, 50, 70, 90}) {
+    // 路灯：灯 / || 支柱 / 柱。
+    for (int x : {6, 26, 46, 66, 86}) {
         put(0, x, UI::paint("灯", UI::Color::BrightYellow));
-        put(1, x, UI::paint("柱", UI::Color::Gray));
+        put(1, x, UI::paint("||", UI::Color::Gray));
+        put(2, x, UI::paint("柱", UI::Color::Gray));
     }
 
     const std::vector<std::string> playerArt = PlayerSprite::lines(player_);
     for (int index = 0; index < 4; ++index) {
-        put(2 + index, playerScreen, playerArt[static_cast<std::size_t>(index)]);
+        put(3 + index, playerScreen, playerArt[static_cast<std::size_t>(index)]);
     }
 
     for (const std::string& row : scene) {
@@ -2428,16 +2489,18 @@ void Game::showGroundHub() {
                 break;
             case 3:
                 if (location == 0) {
-                    if (shopAvailable_) {
-                        showShop();
+                    if (showCityGateDialogue()) {
+                        running = false;
                     } else {
-                        showTrader();
+                        message = "你从城门回到灰烬街道。";
                     }
-                    message = "你从集市回到灰烬街道。";
                 } else if (location == 1) {
+                    showShop();
+                    message = "你从商店回到灰烬街道。";
+                } else if (location == 2) {
                     showCampMenu();
                     message = "你从废墟营地回到灰烬街道。";
-                } else if (location == 2) {
+                } else if (location == 3) {
                     showTavern();
                     message = "你从酒馆回到灰烬街道。";
                 } else {
@@ -2527,6 +2590,62 @@ void Game::showTavern() {
             showJournal();
             message = "你合上见闻记录。";
         }
+    }
+}
+
+bool Game::showCityGateDialogue() {
+    while (true) {
+        UI::clearScreen();
+        Frame frame;
+        frame.addColumns(
+            UI::paint("地面枢纽 · 城门", UI::Color::BrightCyan),
+            UI::paint("身份牌：临时", UI::Color::Gray),
+            55);
+        frame.addDivider();
+        frame.addBlank();
+
+        for (const std::string& line : Sprites::gatekeeper()) {
+            frame.addCentered(UI::paint(line, UI::Color::Gray));
+        }
+        frame.addCentered(UI::paint("机械门卫", UI::Color::Yellow));
+        frame.addBlank();
+
+        const int textStart = frame.rowCount();
+        frame.addWrapped("机械门卫：>「临时身份牌。记录里没有你的旧档案。」<", "  ");
+        frame.addWrapped("「地下又震了。火山灰把外城的路埋了一半。」", "  ");
+        frame.addWrapped("「要出城？现在外面不比城里安全。」", "  ");
+        std::vector<int> typedRows;
+        for (int index = textStart; index < frame.rowCount(); ++index) {
+            typedRows.push_back(index);
+        }
+
+        frame.addBlank();
+        frame.addDivider();
+        frame.addLine(
+            UI::paint("[1]", UI::Color::BrightYellow) + " 交谈   " +
+            UI::paint("[2]", UI::Color::BrightYellow) + " 出城   " +
+            UI::paint("[0]", UI::Color::BrightYellow) + " 返回街道");
+        frame.renderTypewriter(typedRows);
+
+        const int choice = UI::readChoice(
+            UI::paint("  选择 > ", UI::Color::BrightGreen), 0, 2);
+        if (choice == 0 || choice == -1) {
+            return false;
+        }
+        if (choice == 2) {
+            return true;
+        }
+
+        showStoryPage(
+            "城门 · 门卫",
+            {
+                "门卫的镜头转了一下，像是在看你身后的街道。",
+                "「高塔的锁链是旧王都的，不是我们挂的。」",
+                "「你那张临时身份牌，进城可以，出城不保证你还能回来。」",
+                "「火山灰落进地缝，地下的东西最近醒得很勤。」"
+            },
+            UI::Color::Gray,
+            "  按回车继续 > ");
     }
 }
 
@@ -2636,17 +2755,22 @@ void Game::showShopScreen(bool full) {
     while (true) {
         renderShop(*shop, message, full);
 
-        const int choice = UI::readChoice(UI::paint("  选择 > ", UI::Color::BrightGreen), 0, 3);
+        const int maxChoice = full ? 4 : 3;
+        const int choice = UI::readChoice(
+            UI::paint("  选择 > ", UI::Color::BrightGreen), 0, maxChoice);
         switch (choice) {
             case 1:
-                message = buyFromShop(*shop);
+                message = buyFromShop(*shop, full && hasStoryFlag("shop.discount"));
                 break;
             case 2:
-                message = sellToShop();
+                message = sellToShop(full);
                 break;
             case 3:
                 showInventoryScreen();
                 message = full ? "还要买点什么吗？" : "还要换点什么吗？";
+                break;
+            case 4:
+                message = tradeRelicWithOwner();
                 break;
             case 0:
             case -1:
@@ -2662,7 +2786,7 @@ void Game::renderShop(const Shop& shop, const std::string& message, bool full) c
 
     Frame frame;
     frame.addColumns(
-        UI::paint(full ? "地下集市" : "营地 · 拾荒者", UI::Color::BrightCyan),
+        UI::paint(full ? "地面商店" : "营地 · 拾荒者", UI::Color::BrightCyan),
         UI::paint("金币 " + std::to_string(player_.getGold()) +
                   "   背包 " + std::to_string(player_.getInventory().size()) + "/" +
                   std::to_string(player_.getInventory().capacity()),
@@ -2673,7 +2797,8 @@ void Game::renderShop(const Shop& shop, const std::string& message, bool full) c
 
     const std::vector<std::string>& art =
         full ? Sprites::merchant() : Sprites::survivor();
-    const std::string traderLabel = full ? "商人" : "拾荒者";
+    const std::string traderLabel = full ? "商店老板" : "拾荒者";
+    const bool discount = full && hasStoryFlag("shop.discount");
     constexpr int kMerchantWidth = 33;
     const int artRows = static_cast<int>(art.size());
     const int rowCount = std::max(artRows + 2, shop.size());
@@ -2692,7 +2817,7 @@ void Game::renderShop(const Shop& shop, const std::string& message, bool full) c
 
         std::string right;
         if (row < shop.size()) {
-            right = shopItemLine(row + 1, shop[row]);
+            right = shopItemLine(row + 1, shop[row], discount);
         }
         frame.addSplit(left, right, kMerchantWidth);
     }
@@ -2706,15 +2831,19 @@ void Game::renderShop(const Shop& shop, const std::string& message, bool full) c
     }
     frame.addBlank();
     frame.addDivider();
-    frame.addLine(
+    std::string menu =
         UI::paint("[1]", UI::Color::BrightYellow) + " 购买   " +
         UI::paint("[2]", UI::Color::BrightYellow) + " 出售   " +
-        UI::paint("[3]", UI::Color::BrightYellow) + " 查看背包   " +
-        UI::paint("[0]", UI::Color::BrightYellow) + " 离开");
+        UI::paint("[3]", UI::Color::BrightYellow) + " 查看背包";
+    if (full) {
+        menu += "   " + UI::paint("[4]", UI::Color::BrightYellow) + " 古物";
+    }
+    menu += "   " + UI::paint("[0]", UI::Color::BrightYellow) + " 离开";
+    frame.addLine(menu);
     frame.renderTypewriter(typedRows);
 }
 
-std::string Game::buyFromShop(Shop& shop) {
+std::string Game::buyFromShop(Shop& shop, bool discount) {
     const int index = UI::readChoice("  商品编号（0 取消） > ", 0, shop.size());
     if (index == 0 || index == -1) {
         return "慢慢挑。";
@@ -2724,12 +2853,16 @@ std::string Game::buyFromShop(Shop& shop) {
     if (player_.getInventory().full()) {
         return "你的背包满了，先整理一下吧。";
     }
-    if (!player_.getWallet().canAfford(item.getPrice())) {
+
+    int price = item.getPrice();
+    if (discount) {
+        price = std::max(1, price * 9 / 10);
+    }
+    if (!player_.getWallet().canAfford(price)) {
         return "金币不够，先去遗迹里转转吧。";
     }
 
     const std::string name = item.getName();
-    const int price = item.getPrice();
     std::unique_ptr<Item> copy = item.clone();
 
     player_.getWallet() -= price;
@@ -2738,7 +2871,7 @@ std::string Game::buyFromShop(Shop& shop) {
     return "成交，" + name + " 归你了。";
 }
 
-std::string Game::sellToShop() {
+std::string Game::sellToShop(bool full) {
     Inventory& inventory = player_.getInventory();
     if (inventory.empty()) {
         return "背包是空的，没什么可卖的。";
@@ -2755,6 +2888,13 @@ std::string Game::sellToShop() {
         return "这件东西不在了。";
     }
 
+    if (item->getKind() == ItemKind::Relic) {
+        if (!full) {
+            return "这个我不收。你拿去地面商店给老板看看，他懂古物。";
+        }
+        return "这块石板不按普通货收。点 [4] 古物，让老板亲自看看。";
+    }
+
     const std::string name = item->getName();
     const int price = item->getSellPrice();
 
@@ -2762,6 +2902,39 @@ std::string Game::sellToShop() {
     player_.getWallet() += price;
 
     return "这件" + name + "，我出 " + std::to_string(price) + " 金币。";
+}
+
+std::string Game::tradeRelicWithOwner() {
+    if (hasStoryFlag("relic.interpreted")) {
+        return "老板已经把石板收进柜台下面的木匣里了。";
+    }
+    if (!hasRelic()) {
+        return "老板看了看你的背包：‘古物呢？没有就别逗我。’";
+    }
+
+    std::string relicName;
+    if (!takeRelic(relicName)) {
+        return "老板皱了皱眉：‘这块石板有点不对劲。’";
+    }
+
+    player_.gainGold(40);
+    setStoryFlag("relic.interpreted");
+    setStoryFlag("shop.discount");
+    unlockJournal("relic.slate");
+
+    showStoryPage(
+        "地面商店 · 古文字解读",
+        {
+            "老板放下账本，把石板翻了过来。",
+            "‘这不是普通石头。上面是古国文字，讲的是地下五层的一条旧矿井路线。’",
+            "‘还有一段被钉死的休息室。有人在那里藏过东西，也死过。’",
+            "他抬头看了你一眼：‘我年轻时挖过几年遗址。这块石板，我收了。’",
+            "老板给了你 40 金币。以后在他的店里买东西，算九折。"
+        },
+        UI::Color::BrightCyan,
+        "  按回车继续 > ");
+
+    return "老板收下了" + relicName + "，给了你 40 金币。以后在这里买东西打九折。";
 }
 
 void Game::showInventoryScreen() {
@@ -2801,6 +2974,8 @@ void Game::showInventoryScreen() {
                     message = useMessage;
                 } else if (item->getKind() == ItemKind::Material) {
                     message = "材料不能直接使用，可以卖给商人。";
+                } else if (item->getKind() == ItemKind::Relic) {
+                    message = "这是重要遗物，不能直接使用。拿去地面商店给老板看看。";
                 } else {
                     std::string equipMessage;
                     player_.equipFromInventory(itemIndex - 1, equipMessage);
@@ -2955,6 +3130,13 @@ std::unique_ptr<Monster> Game::createMimic() const {
 
 void Game::grantChestLoot(std::vector<std::string>& lines) {
     const int roll = Random::integer(0, 99);
+
+    if (!hasRelic() && !hasStoryFlag("relic.interpreted") &&
+        player_.getInventory().canAdd() && roll < 8) {
+        player_ + std::make_unique<Relic>("刻纹石板", 80);
+        lines.push_back("宝箱底层压着一块刻满古国文字的" + std::string("刻纹石板") + "。");
+        return;
+    }
 
     if (roll < 45) {
         const int gold = Random::integer(15, 40);

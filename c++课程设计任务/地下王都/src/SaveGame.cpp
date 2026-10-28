@@ -92,6 +92,11 @@ std::string serializeItem(const Item& item) {
                std::to_string(material->getPrice());
     }
 
+    if (const Relic* relic = dynamic_cast<const Relic*>(&item)) {
+        return "RELIC|" + relic->getName() + "|" +
+               std::to_string(relic->getPrice());
+    }
+
     return std::string();
 }
 
@@ -189,6 +194,19 @@ std::unique_ptr<Item> parseItem(const std::string& data, std::string& error) {
             return nullptr;
         }
         return std::make_unique<Material>(parts[1], price);
+    }
+
+    if (type == "RELIC") {
+        if (parts.size() != 3) {
+            error = "遗物记录字段数量不正确";
+            return nullptr;
+        }
+        int price = 0;
+        if (!parseInt(parts[2], price) || price < 0 || parts[1].empty()) {
+            error = "遗物记录数值不正确";
+            return nullptr;
+        }
+        return std::make_unique<Relic>(parts[1], price);
     }
 
     error = "未知物品类型：" + type;

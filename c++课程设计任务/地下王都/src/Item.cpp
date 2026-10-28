@@ -169,6 +169,27 @@ std::unique_ptr<Item> Material::clone() const {
     return std::make_unique<Material>(getName(), getPrice());
 }
 
+Relic::Relic(std::string name, int price)
+    : Item(std::move(name), price) {
+}
+
+ItemKind Relic::getKind() const {
+    return ItemKind::Relic;
+}
+
+std::string Relic::getDescription() const {
+    return "刻有古国文字的特殊遗物，普通商人不敢收。";
+}
+
+bool Relic::use(Character&, std::string& message) {
+    message = "这是重要遗物，不能直接使用。拿去地面商店给老板看看。";
+    return false;
+}
+
+std::unique_ptr<Item> Relic::clone() const {
+    return std::make_unique<Relic>(getName(), getPrice());
+}
+
 bool Inventory::canAdd() const {
     return static_cast<int>(items_.size()) < kCapacity;
 }

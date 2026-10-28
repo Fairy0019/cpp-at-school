@@ -11,7 +11,8 @@ enum class ItemKind {
     Weapon,
     Armor,
     Accessory,
-    Material
+    Material,
+    Relic
 };
 
 enum class EquipmentSlot {
@@ -105,6 +106,17 @@ public:
 class Material : public Item {
 public:
     Material(std::string name, int price);
+
+    ItemKind getKind() const override;
+    std::string getDescription() const override;
+    bool use(Character& user, std::string& message) override;
+    std::unique_ptr<Item> clone() const override;
+};
+
+// 古遗物：地下的关键道具，普通拾荒者不收，地面商店老板会解读。
+class Relic : public Item {
+public:
+    Relic(std::string name, int price);
 
     ItemKind getKind() const override;
     std::string getDescription() const override;

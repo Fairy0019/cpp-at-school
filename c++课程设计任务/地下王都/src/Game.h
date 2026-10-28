@@ -37,6 +37,8 @@ private:
     void showReawakening() const;
     bool hasStoryFlag(const std::string& flag) const;
     void setStoryFlag(const std::string& flag);
+    bool hasRelic() const;
+    bool takeRelic(std::string& relicName);
 
     void showEnterRuinsCutscene() const;
     void showAreaIntro(int stage) const;
@@ -58,6 +60,7 @@ private:
                    const std::string& message) const;
     void showTavern();
     void showTowerGate();
+    bool showCityGateDialogue();
     void showJournal();
     void unlockJournal(const std::string& id);
     void renderCorridor(int floor, int depth, int areaStage,
@@ -81,8 +84,9 @@ private:
     void renderInventory(const std::string& title,
                          const std::string& message,
                          bool selling) const;
-    std::string buyFromShop(Shop& shop);
-    std::string sellToShop();
+    std::string buyFromShop(Shop& shop, bool discount);
+    std::string sellToShop(bool full);
+    std::string tradeRelicWithOwner();
     void showResult(const std::string& title,
                     const std::vector<std::string>& lines,
                     UI::Color color) const;

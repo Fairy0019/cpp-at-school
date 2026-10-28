@@ -174,6 +174,8 @@ void Battle::renderInventory(const std::string& message) const {
                                item.getDescription();
             if (item.getKind() == ItemKind::Material) {
                 line += "  （材料）";
+            } else if (item.getKind() == ItemKind::Relic) {
+                line += "  （遗物）";
             } else if (item.getKind() != ItemKind::Consumable) {
                 line += "  （装备）";
             }
@@ -215,6 +217,10 @@ bool Battle::useItemFromInventory(std::string& message) {
         }
         if (item->getKind() == ItemKind::Material) {
             hint = "材料不能在战斗中使用。";
+            continue;
+        }
+        if (item->getKind() == ItemKind::Relic) {
+            hint = "遗物不能在战斗中使用。";
             continue;
         }
         if (item->getKind() != ItemKind::Consumable) {
