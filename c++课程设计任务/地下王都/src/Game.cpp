@@ -2383,26 +2383,65 @@ void Game::renderHub(int locationIndex, int playerScreen,
 
     constexpr int kSceneRows = 10;
     std::vector<std::string> scene(kSceneRows);
-    const auto put = [&](int row, int column, const std::string& text) {
+
+    // 场景元素按“行 → 列”排序后再拼接，避免后画的人物被追加到右侧灯杆之后。
+    struct SceneElement {
+        int row;
+        int column;
+        int width;
+        std::string text;
+    };
+    std::vector<SceneElement> elements;
+    const auto add = [&](int row, int column, const std::string& text) {
         if (row < 0 || row >= kSceneRows || column < 0 || column >= 99) {
             return;
         }
-        appendAtColumn(scene[static_cast<std::size_t>(row)], text, column);
+        elements.push_back({row, column, UI::displayWidth(text), text});
     };
 
-    // 路灯：\灯/ 灯头、柱、| | 长杆；长杆一直落到地面。
+    // 路灯：\灯/ 灯头、柱、|  | 长杆；长杆一直落到地面。
     for (int x : {6, 26, 46, 66, 86}) {
-        put(0, x, UI::paint("\\灯/", UI::Color::BrightYellow));
-        put(1, x + 1, UI::paint("柱", UI::Color::Gray));
+        add(0, x, UI::paint("\\灯/", UI::Color::BrightYellow));
+        add(1, x + 1, UI::paint("柱", UI::Color::Gray));
         for (int row = 2; row < kSceneRows; ++row) {
-            put(row, x + 1, UI::paint("| |", UI::Color::Gray));
+            add(row, x, UI::paint("|  |", UI::Color::Gray));
         }
     }
 
     const std::vector<std::string> playerArt = PlayerSprite::lines(player_);
+    const int playerFirstRow = kSceneRows - 4;
+
+    // 人物走到灯杆前面时，先移除同一格上的灯杆，避免拼接时被挤到后面。
+    elements.erase(
+        std::remove_if(elements.begin(), elements.end(),
+                       [&](const SceneElement& element) {
+                           if (element.row < playerFirstRow) {
+                               return false;
+                           }
+                           const int playerWidth = UI::displayWidth(
+                               playerArt[static_cast<std::size_t>(
+                                   element.row - playerFirstRow)]);
+                           return element.column < playerScreen + playerWidth &&
+                                  playerScreen < element.column + element.width;
+                       }),
+        elements.end());
+
     for (int index = 0; index < 4; ++index) {
-        put(kSceneRows - 4 + index, playerScreen,
-            playerArt[static_cast<std::size_t>(index)]);
+        const std::string& line = playerArt[static_cast<std::size_t>(index)];
+        elements.push_back({playerFirstRow + index, playerScreen,
+                            UI::displayWidth(line), line});
+    }
+
+    std::sort(elements.begin(), elements.end(),
+              [](const SceneElement& left, const SceneElement& right) {
+                  if (left.row != right.row) {
+                      return left.row < right.row;
+                  }
+                  return left.column < right.column;
+              });
+    for (const SceneElement& element : elements) {
+        appendAtColumn(scene[static_cast<std::size_t>(element.row)],
+                       element.text, element.column);
     }
 
     for (const std::string& row : scene) {
