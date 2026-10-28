@@ -2381,7 +2381,7 @@ void Game::renderHub(int locationIndex, int playerScreen,
     frame.addDivider();
     frame.addBlank();
 
-    constexpr int kSceneRows = 10;
+    constexpr int kSceneRows = 20;
     std::vector<std::string> scene(kSceneRows);
 
     // 场景元素按“行 → 列”排序后再拼接，避免后画的人物被追加到右侧灯杆之后。
@@ -2404,7 +2404,7 @@ void Game::renderHub(int locationIndex, int playerScreen,
         add(0, x, UI::paint("\\灯/", UI::Color::BrightYellow));
         add(1, x + 1, UI::paint("柱", UI::Color::Gray));
         for (int row = 2; row < kSceneRows; ++row) {
-            add(row, x, UI::paint("|  |", UI::Color::Gray));
+            add(row, x + 1, UI::paint("||", UI::Color::Gray));
         }
     }
 
