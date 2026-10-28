@@ -2396,11 +2396,13 @@ void Game::renderHub(int locationIndex, int playerScreen,
         elements.push_back({row, column, UI::displayWidth(text), text});
     };
 
-    // 路灯：\灯/ 灯头、柱、|| 短杆；杆固定 5 行高。
+    // 路灯：\灯/ 灯头、柱、|| 短杆；杆固定 5 行高，并让杆底踩在地面线上。
+    constexpr int kLampPoleRows = 5;
+    const int lampTop = kSceneRows - (kLampPoleRows + 2);
     for (int x : {6, 26, 46, 66, 86}) {
-        add(0, x, UI::paint("\\灯/", UI::Color::BrightYellow));
-        add(1, x + 1, UI::paint("柱", UI::Color::Gray));
-        for (int row = 2; row < 7; ++row) {
+        add(lampTop, x, UI::paint("\\灯/", UI::Color::BrightYellow));
+        add(lampTop + 1, x + 1, UI::paint("柱", UI::Color::Gray));
+        for (int row = lampTop + 2; row < kSceneRows; ++row) {
             add(row, x + 1, UI::paint("||", UI::Color::Gray));
         }
     }
