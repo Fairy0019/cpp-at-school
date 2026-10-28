@@ -355,6 +355,28 @@ std::string paint(const std::string& text, Color color, bool bold) {
     return prefix + text + "\x1b[0m";
 }
 
+std::string paintRgb(const std::string& text, int red, int green, int blue,
+                     bool background) {
+    if (!g_ansiEnabled || text.empty()) {
+        return text;
+    }
+
+    red = std::max(0, std::min(255, red));
+    green = std::max(0, std::min(255, green));
+    blue = std::max(0, std::min(255, blue));
+
+    std::string prefix = "\x1b[";
+    prefix += background ? "48" : "38";
+    prefix += ";2;";
+    prefix += std::to_string(red);
+    prefix += ";";
+    prefix += std::to_string(green);
+    prefix += ";";
+    prefix += std::to_string(blue);
+    prefix += "m";
+    return prefix + text + "\x1b[0m";
+}
+
 void typeText(const std::string& text, int delayMs) {
     if (!g_consoleAttached || delayMs <= 0) {
         std::cout << text;

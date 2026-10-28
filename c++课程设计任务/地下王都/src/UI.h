@@ -48,6 +48,10 @@ void sleepFor(int milliseconds);
 // 给文本着色。颜色未启用时原样返回。
 std::string paint(const std::string& text, Color color, bool bold = false);
 
+// 24 位真彩色；用于紫→白渐变 LOGO。颜色未启用时原样返回。
+std::string paintRgb(const std::string& text, int red, int green, int blue,
+                     bool background = false);
+
 // 逐字输出文本；输出被重定向或非交互式控制台时直接输出全文。
 void typeText(const std::string& text, int delayMs = 6);
 

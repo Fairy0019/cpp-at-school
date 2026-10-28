@@ -775,49 +775,92 @@ void Game::showEngineLogo() const {
     UI::clearScreen();
 
     Frame frame;
-    frame.addCentered(UI::paint("沉 没 王 都  ·  引 擎", UI::Color::Gray));
+    frame.addCentered(UI::paint("沉 没 王 都  ·  |引 擎|", UI::Color::Gray));
     frame.addBlank();
 
-    constexpr int kBoxWidth = 62;
-    constexpr int kInnerWidth = kBoxWidth - 2;
-    frame.addCentered(UI::paint("╭" + repeatText("─", kInnerWidth) + "╮",
-                                UI::Color::BrightBlue));
-
-    const auto boxLine = [&](const std::string& content) {
-        frame.addCentered(UI::paint("│", UI::Color::BrightBlue) +
-                          UI::padRight(UI::center(content, kInnerWidth),
-                                       kInnerWidth) +
-                          UI::paint("│", UI::Color::BrightBlue));
+    // 紫 → 白渐变数字面板；0 在左（紫），9 在右（白）。
+    constexpr int kPanelInnerWidth = 86;
+    constexpr int kPanelRows = 10;
+    constexpr int kMaskTop = 2;
+    const std::vector<std::string> mask = {
+        "  ######      ##     ##   ",
+        " ###   ###    ##     ##   ",
+        " ###         ###### ######",
+        " ###         ###### ######",
+        " ###   ###    ##     ##   ",
+        "  ######      ##     ##   "
     };
+    const int maskWidth = static_cast<int>(mask.front().size());
+    const int maskStart = (kPanelInnerWidth - maskWidth) / 2;
 
-    const std::vector<std::string> logo = {
-        "  ██████╗    ██╗  ██╗  ██╗  ",
-        " ██╔════╝    ╚██╗██╔╝  ╚██╗ ",
-        " ██║          ╚███╔╝    ╚██╗",
-        " ██║          ██╔██╗    ██╔╝",
-        " ╚██████╗    ██╔╝ ██╗  ██╔╝ ",
-        "  ╚═════╝    ╚═╝  ╚═╝  ╚═╝  "
-    };
-
-    boxLine("");
-    for (const std::string& line : logo) {
-        boxLine(UI::paint(line, UI::Color::BrightBlue));
+    std::vector<std::vector<std::string>> cells(
+        kPanelRows, std::vector<std::string>(kPanelInnerWidth));
+    for (int row = 0; row < kPanelRows; ++row) {
+        for (int column = 0; column < kPanelInnerWidth; ++column) {
+            const double t = static_cast<double>(column) /
+                             static_cast<double>(kPanelInnerWidth - 1);
+            const int red = 138 + static_cast<int>((255 - 138) * t);
+            const int green = 43 + static_cast<int>((255 - 43) * t);
+            const int blue = 226 + static_cast<int>((255 - 226) * t);
+            const int digit = std::min(9, column * 10 / kPanelInnerWidth);
+            cells[static_cast<std::size_t>(row)]
+                 [static_cast<std::size_t>(column)] =
+                UI::paintRgb(std::string(1, static_cast<char>('0' + digit)),
+                             red, green, blue);
+        }
     }
-    boxLine("");
-    boxLine(UI::paint("Enhanced development tools for C++",
-                      UI::Color::BrightCyan));
-    boxLine(UI::paint("in VS Code", UI::Color::BrightCyan));
-    boxLine("");
-    boxLine(UI::paint("引擎：C++", UI::Color::BrightYellow));
-    frame.addCentered(UI::paint("╰" + repeatText("─", kInnerWidth) + "╯",
-                                UI::Color::BrightBlue));
 
+    // C++ 像素字：白色向下投影 + 深紫实心字，压在渐变数字上。
+    for (int row = 0; row < static_cast<int>(mask.size()); ++row) {
+        for (int column = 0; column < maskWidth; ++column) {
+            if (mask[static_cast<std::size_t>(row)]
+                    [static_cast<std::size_t>(column)] == ' ') {
+                continue;
+            }
+            const int shadowRow = kMaskTop + row + 1;
+            const int shadowColumn = maskStart + column;
+            if (shadowRow < kPanelRows) {
+                cells[static_cast<std::size_t>(shadowRow)]
+                     [static_cast<std::size_t>(shadowColumn)] =
+                    UI::paintRgb("█", 255, 255, 255);
+            }
+        }
+    }
+    for (int row = 0; row < static_cast<int>(mask.size()); ++row) {
+        for (int column = 0; column < maskWidth; ++column) {
+            if (mask[static_cast<std::size_t>(row)]
+                    [static_cast<std::size_t>(column)] == ' ') {
+                continue;
+            }
+            cells[static_cast<std::size_t>(kMaskTop + row)]
+                 [static_cast<std::size_t>(maskStart + column)] =
+                UI::paintRgb("█", 28, 0, 44);
+        }
+    }
+
+    frame.addCentered(UI::paint("╭" + repeatText("─", kPanelInnerWidth) + "╮",
+                                UI::Color::BrightMagenta));
+    for (int row = 0; row < kPanelRows; ++row) {
+        std::string content;
+        content.reserve(static_cast<std::size_t>(kPanelInnerWidth) * 24);
+        for (int column = 0; column < kPanelInnerWidth; ++column) {
+            content += cells[static_cast<std::size_t>(row)]
+                            [static_cast<std::size_t>(column)];
+        }
+        frame.addCentered(UI::paint("│", UI::Color::BrightMagenta) + content +
+                          UI::paint("│", UI::Color::BrightMagenta));
+    }
+    frame.addCentered(UI::paint("╰" + repeatText("─", kPanelInnerWidth) + "╯",
+                                UI::Color::BrightMagenta));
+
+    frame.addBlank();
+    frame.addCentered(UI::paint("帝王引擎：C++", UI::Color::BrightYellow));
     frame.addBlank();
     frame.addCentered(UI::paint("██", UI::Color::BrightRed) + "  " +
                       UI::paint("██", UI::Color::BrightGreen));
     frame.addCentered(UI::paint("██", UI::Color::BrightBlue) + "  " +
-                      UI::paint("██", UI::Color::BrightYellow));
-    frame.addCentered(UI::paint("Microsoft Windows", UI::Color::Gray));
+                      UI::paint("██", UI::Color::BrightYellow) + "  " +
+                      UI::paint("Microsoft Windows", UI::Color::Gray));
     frame.render();
 
     UI::waitForEnter(UI::paint("  按回车继续 > ", UI::Color::BrightGreen));
