@@ -101,6 +101,15 @@ const std::vector<std::string> kMimic = {
     "   └────────┘"
 };
 
+// 通道里的尸体：靠墙坐着，身上盖着破布。
+const std::vector<std::string> kCorpse = {
+    "    ┌───┐",
+    "    │尸│",
+    "    └─┬─┘",
+    "   / 破布 \\",
+    "     / \\"
+};
+
 }  // namespace
 
 namespace Sprites {
@@ -151,6 +160,10 @@ const std::vector<std::string>& chest() {
 
 const std::vector<std::string>& mimic() {
     return kMimic;
+}
+
+const std::vector<std::string>& corpse() {
+    return kCorpse;
 }
 
 }  // namespace Sprites

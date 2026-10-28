@@ -460,13 +460,6 @@ std::string repeatText(const std::string& unit, int count) {
     return result;
 }
 
-std::string travelFlavor(int stage, int progress) {
-    if (progress < 1 || progress > 3) {
-        return "你继续向遗迹深处走去。";
-    }
-    return areaForStage(stage).travel[static_cast<std::size_t>(progress - 1)];
-}
-
 std::string shopItemLine(int index, const Item& item) {
     return UI::paint("[" + std::to_string(index) + "]", UI::Color::BrightYellow) + " " +
            UI::padRight(item.getName(), 8) + "  " +
@@ -494,6 +487,40 @@ std::string equipmentLabel(const Equipment* equipment) {
         return "无";
     }
     return equipment->getName() + "（" + equipment->getDescription() + "）";
+}
+
+std::string joinNames(const std::vector<std::string>& names) {
+    std::string result;
+    for (const std::string& name : names) {
+        if (!result.empty()) {
+            result += "、";
+        }
+        result += name;
+    }
+    return result;
+}
+
+std::string corpseHint(int stage) {
+    switch (stage) {
+        case 0:
+            return "别在裂缝前停太久。地底会记住你的脚步声。";
+        case 1:
+            return "雪灾没有周期。看到日期不对，就往下走。";
+        case 2:
+            return "震中不在断层。所有线都指向城市正下方。";
+        case 3:
+            return "炉心不是神。它只是一台坏掉的机器。";
+        case 4:
+            return "国王关过它一次。门是留给后人的，不是给信徒的。";
+        case 5:
+            return "新王国不知道炉心。公文里没有的东西，不一定不存在。";
+        case 6:
+            return "四骑士里，只有封存还醒着。";
+        case 7:
+            return "门认签名，不认身份牌上的物种。";
+        default:
+            return "往下走，别回头。";
+    }
 }
 
 std::string trimText(const std::string& text) {
@@ -1504,68 +1531,271 @@ void Game::renderCamp(const std::string& message) const {
     }
 }
 
-void Game::renderTravel(int progress, int playerColumn) const {
+void Game::renderCorridor(int floor, int depth, int areaStage) const {
     UI::clearScreen();
 
-    const AreaInfo& area = areaForStage(storyStage_);
+    const AreaInfo& area = areaForStage(areaStage);
 
     Frame frame;
     frame.addColumns(
-        UI::paint(area.act + " · " + area.name, UI::Color::BrightCyan),
-        UI::paint("探索进度 " + std::to_string(progress) + "/3", UI::Color::Gray),
-        65);
+        UI::paint(area.act + " · " + area.name + " · 第 " +
+                      std::to_string(floor) + " 层",
+                  UI::Color::BrightCyan),
+        UI::paint("深度 " + std::to_string(depth) + "    线索 " +
+                      std::to_string(std::min(storyStage_, kStoryClueCount)) +
+                      "/" + std::to_string(kStoryClueCount),
+                  UI::Color::Gray),
+        60);
     frame.addDivider();
     frame.addBlank();
 
     const std::vector<std::string> playerArt = PlayerSprite::lines(player_);
-    const std::vector<std::string>& doorArt = Sprites::door();
-    const std::string doorLabel = storyStage_ >= 7 ? "核心门"
-                                 : (storyStage_ >= 6 ? "石门" : "木门");
 
     frame.addLine(sceneRow(
         UI::paint("火", UI::Color::Yellow), 16,
-        UI::paint("火", UI::Color::Yellow), 66));
+        UI::paint("火", UI::Color::Yellow), 84));
 
     for (int index = 0; index < 4; ++index) {
-        const std::string doorLine =
-            index < 3 ? UI::paint(doorArt[static_cast<std::size_t>(index)], UI::Color::Yellow)
-                      : std::string();
-        frame.addLine(sceneRow(playerArt[static_cast<std::size_t>(index)], playerColumn,
-                               doorLine, 84));
+        frame.addLine(sceneRow(playerArt[static_cast<std::size_t>(index)], 48,
+                               std::string(), 0));
     }
 
     frame.addLine(UI::paint(floorLine(92), UI::Color::Gray));
     frame.addLine(sceneRow(
-        UI::paint(player_.getName(), UI::Color::BrightCyan), playerColumn,
-        UI::paint(doorLabel, UI::Color::Yellow), 84));
+        UI::paint(player_.getName(), UI::Color::BrightCyan), 48,
+        UI::paint("通道", UI::Color::Yellow), 84));
 
     frame.addBlank();
-    frame.addWrapped(travelFlavor(storyStage_, progress), "  ");
+    frame.addWrapped("火把照亮一截湿冷的石廊。前面没有固定的门，只有更深处的黑暗。", "  ");
     frame.addBlank();
     frame.addDivider();
-
-    const std::string forwardLabel =
-        (progress >= 3) ? (storyStage_ >= 7 ? "靠近核心门" : "靠近木门") : "继续前进";
     frame.addLine(
-        UI::paint("[1]", UI::Color::BrightYellow) + " " + forwardLabel + "   " +
+        UI::paint("[1]", UI::Color::BrightYellow) + " 继续前进   " +
         UI::paint("[2]", UI::Color::BrightYellow) + " 查看状态   " +
         UI::paint("[3]", UI::Color::BrightYellow) + " 返回营地");
 
     frame.render();
 }
 
-void Game::animateWalk(int fromColumn, int toColumn, int progress) const {
-    if (!UI::isInteractive()) {
-        renderTravel(progress, toColumn);
+void Game::handleCorridorTrap(int floor) {
+    const int rawDamage = 2 + std::max(0, floor) + Random::integer(0, 2);
+    const int hpBefore = player_.getHp();
+    const int damage = std::min(rawDamage, std::max(0, hpBefore - 1));
+    const int lost = player_.takeDamage(damage);
+
+    showStoryPage(
+        "通道 · 陷阱",
+        {
+            "脚下的石板突然下陷，锈蚀的尖刺从缝里刺出来。",
+            "你损失了 " + std::to_string(lost) + " 点 HP。",
+            lost == 0 ? "你勉强避开了要害。" : "伤口不深，但血腥味会招来东西。"
+        },
+        UI::Color::BrightRed,
+        "  按回车继续 > ");
+}
+
+void Game::handleCorridorCaveIn(int floor, int& nextFloor) {
+    nextFloor = floor + 1;
+    const int rawDamage = 3 + std::max(0, floor) + Random::integer(0, 2);
+    const int hpBefore = player_.getHp();
+    const int damage = std::min(rawDamage, std::max(0, hpBefore - 1));
+    const int lost = player_.takeDamage(damage);
+
+    showStoryPage(
+        "通道 · 塌方",
+        {
+            "头顶的支撑结构发出断裂声。你来不及后退。",
+            "碎石把你推向下一层。你损失了 " + std::to_string(lost) + " 点 HP。",
+            "灰尘散去时，你落在第 " + std::to_string(nextFloor) + " 层。"
+        },
+        UI::Color::BrightYellow,
+        "  按回车继续 > ");
+}
+
+void Game::handleCorridorCorpse() {
+    UI::clearScreen();
+
+    Frame frame;
+    frame.addColumns(
+        UI::paint("通道 · 尸体", UI::Color::BrightCyan),
+        UI::paint("搜索", UI::Color::Gray),
+        65);
+    frame.addDivider();
+    frame.addBlank();
+
+    for (const std::string& line : Sprites::corpse()) {
+        frame.addCentered(UI::paint(line, UI::Color::Gray));
+    }
+
+    frame.addBlank();
+    const int textStart = frame.rowCount();
+    frame.addWrapped("尸体靠在墙边，身上的破布已经和灰尘粘在一起。", "  ");
+    frame.addWrapped("他手里像攥着什么，也可能只是临死前的姿势。", "  ");
+    std::vector<int> typedRows;
+    for (int index = textStart; index < frame.rowCount(); ++index) {
+        typedRows.push_back(index);
+    }
+    frame.addBlank();
+    frame.addDivider();
+    frame.addLine(
+        UI::paint("[1]", UI::Color::BrightYellow) + " 搜身   " +
+        UI::paint("[0]", UI::Color::BrightYellow) + " 离开");
+    frame.renderTypewriter(typedRows);
+
+    const int choice = UI::readChoice(
+        UI::paint("  选择 > ", UI::Color::BrightGreen), 0, 1);
+    if (choice == 0 || choice == -1) {
         return;
     }
 
-    constexpr int kFrames = 5;
-    for (int frame = 1; frame <= kFrames; ++frame) {
-        const int column = fromColumn + (toColumn - fromColumn) * frame / kFrames;
-        renderTravel(progress, column);
-        UI::sleepFor(65);
+    std::vector<std::string> lines;
+    const int roll = Random::integer(0, 99);
+    if (roll < 40) {
+        const int gold = Random::integer(10, 30);
+        player_.gainGold(gold);
+        lines.push_back("尸体腰间的钱袋里还有 " + std::to_string(gold) + " 枚金币。");
+    } else if (roll < 62) {
+        std::unique_ptr<Item> item =
+            std::make_unique<Potion>("红药水", 8, Potion::Effect::RestoreHp, 15);
+        const std::string name = item->getName();
+        if (player_.getInventory().canAdd()) {
+            player_ + std::move(item);
+            lines.push_back("你找到一瓶还没冻住的" + name + "。");
+        } else {
+            const int gold = item->getSellPrice();
+            player_.gainGold(gold);
+            lines.push_back("背包已满，你把" + name + "折成了 " +
+                            std::to_string(gold) + " 枚金币。");
+        }
+    } else if (roll < 78) {
+        std::unique_ptr<Item> item;
+        if (Random::chance(0.5)) {
+            item = std::make_unique<Weapon>("旧王都短剑", 30, 3);
+        } else {
+            item = std::make_unique<Armor>("旧王都护甲", 35, 3);
+        }
+        const std::string name = item->getName();
+        if (player_.getInventory().canAdd()) {
+            player_ + std::move(item);
+            lines.push_back("你从他身下抽出一件" + name + "。");
+        } else {
+            const int gold = item->getSellPrice();
+            player_.gainGold(gold);
+            lines.push_back("背包已满，你把" + name + "折成了 " +
+                            std::to_string(gold) + " 枚金币。");
+        }
+    } else {
+        lines.push_back("他手里攥着一张被血浸透的纸条：");
+        lines.push_back("‘" + corpseHint(storyStage_) + "’");
     }
+
+    showResult("尸体 · 搜索", lines, UI::Color::Gray);
+}
+
+bool Game::handleCorridorDoor(int& floor, std::string& message) {
+    UI::clearScreen();
+
+    Frame frame;
+    frame.addColumns(
+        UI::paint("通道 · 门", UI::Color::BrightCyan),
+        UI::paint("第 " + std::to_string(floor) + " 层", UI::Color::Gray),
+        65);
+    frame.addDivider();
+    frame.addBlank();
+
+    for (const std::string& line : Sprites::door()) {
+        frame.addCentered(UI::paint(line, UI::Color::Yellow));
+    }
+
+    frame.addBlank();
+    const int textStart = frame.rowCount();
+    frame.addWrapped("通道尽头多了一扇门。门缝里没有光，也没有风。", "  ");
+    frame.addWrapped("门后可能是房间、废弃营地，或者向下的石阶。", "  ");
+    std::vector<int> typedRows;
+    for (int index = textStart; index < frame.rowCount(); ++index) {
+        typedRows.push_back(index);
+    }
+    frame.addBlank();
+    frame.addDivider();
+    frame.addLine(
+        UI::paint("[1]", UI::Color::BrightYellow) + " 推门进入   " +
+        UI::paint("[2]", UI::Color::BrightYellow) + " 继续沿通道前进");
+    frame.renderTypewriter(typedRows);
+
+    const int choice = UI::readChoice(
+        UI::paint("  选择 > ", UI::Color::BrightGreen), 1, 2);
+    if (choice == 2 || choice == -1) {
+        return true;
+    }
+
+    const int type = Random::integer(0, 2);
+    if (type == 0) {
+        bool defeated = false;
+        message = showRewardRoom(defeated);
+        return !defeated;
+    }
+
+    if (type == 1) {
+        const int hpHeal = player_.heal(player_.getMaxHp() / 2);
+        const int mpHeal = player_.restoreMp(player_.getMaxMp() / 2);
+        showStoryPage(
+            "房间 · 废弃营地",
+            {
+                "门后是一间被遗弃的营地。火堆早灭了，但墙角还有干柴。",
+                "你重新点燃火堆，休息了一会儿。",
+                "恢复了 " + std::to_string(hpHeal) + " 点 HP、" +
+                    std::to_string(mpHeal) + " 点 MP。"
+            },
+            UI::Color::BrightYellow,
+            "  按回车继续 > ");
+        return true;
+    }
+
+    ++floor;
+    showStoryPage(
+        "通道 · 向下的石阶",
+        {
+            "门后没有房间，只有一段向下的石阶。",
+            "你沿着石阶走进更深的一层。空气变得更热，回声也更近。",
+            "你现在位于第 " + std::to_string(floor) + " 层。"
+        },
+        UI::Color::BrightCyan,
+        "  按回车继续 > ");
+    return true;
+}
+
+std::string Game::handleDefeat(const std::string& enemyName) {
+    const int lostGold = std::min(player_.getGold(), Random::integer(5, 15));
+    if (lostGold > 0) {
+        player_.spendGold(lostGold);
+    }
+
+    std::vector<std::string> lostItems;
+    const int itemLoss = Random::integer(0, 2);
+    for (int index = 0; index < itemLoss && !player_.getInventory().empty(); ++index) {
+        const int pick = Random::integer(0, player_.getInventory().size() - 1);
+        std::unique_ptr<Item> item = player_.getInventory().takeItem(pick);
+        if (item) {
+            lostItems.push_back(item->getName());
+        }
+    }
+
+    player_.restoreAll();
+
+    std::vector<std::string> lines;
+    lines.push_back("你被" + enemyName + "击倒。");
+    lines.push_back("醒来时，你回到了地面，城中的营地。");
+    if (lostGold > 0) {
+        lines.push_back("丢失了 " + std::to_string(lostGold) + " 枚金币。");
+    }
+    if (!lostItems.empty()) {
+        lines.push_back("丢失物品：" + joinNames(lostItems) + "。");
+    } else {
+        lines.push_back("背包里的东西还在。");
+    }
+    showResult("战  败", lines, UI::Color::BrightRed);
+
+    return "你在城中的营地醒来。检查损失后，准备再次出发。";
 }
 
 void Game::triggerTravelDisaster() {
@@ -2123,18 +2353,21 @@ void Game::showEncounterCutscene(const Monster& monster) const {
     UI::waitForEnter(UI::paint("  按回车迎战 > ", UI::Color::BrightRed));
 }
 
-std::unique_ptr<Monster> Game::createRandomMonster() const {
+std::unique_ptr<Monster> Game::createRandomMonster(int floor) const {
+    std::unique_ptr<Monster> monster;
     const int roll = Random::integer(0, 99);
     if (roll < 40) {
-        return std::make_unique<RuinsRat>();
-    }
-    if (roll < 75) {
+        monster = std::make_unique<RuinsRat>();
+    } else if (roll < 75) {
         const SlimeElement element = Random::chance(0.5)
                                           ? SlimeElement::Water
                                           : SlimeElement::Fire;
-        return std::make_unique<Slime>(element);
+        monster = std::make_unique<Slime>(element);
+    } else {
+        monster = std::make_unique<Goblin>();
     }
-    return std::make_unique<Goblin>();
+    monster->scaleForFloor(floor);
+    return monster;
 }
 
 std::unique_ptr<Monster> Game::createGuardian() const {
@@ -2178,7 +2411,8 @@ void Game::grantChestLoot(std::vector<std::string>& lines) {
     }
 }
 
-std::string Game::showRewardRoom() {
+std::string Game::showRewardRoom(bool& defeated) {
+    defeated = false;
     UI::clearScreen();
 
     Frame frame;
@@ -2211,7 +2445,7 @@ std::string Game::showRewardRoom() {
     const int choice = UI::readChoice(
         UI::paint("  选择 > ", UI::Color::BrightGreen), 0, 1);
     if (choice == 0 || choice == -1) {
-        return "你没有打开宝箱，回到营地。";
+        return "你没有打开宝箱，退回通道。";
     }
 
     if (!Random::chance(0.3)) {
@@ -2259,20 +2493,8 @@ std::string Game::showRewardRoom() {
     }
 
     if (result == BattleResult::Defeat) {
-        const int lostGold = std::min(10, player_.getGold());
-        if (lostGold > 0) {
-            player_.spendGold(lostGold);
-        }
-        player_.restoreAll();
-
-        std::vector<std::string> lines;
-        lines.push_back("宝箱怪把你咬昏了。");
-        lines.push_back("醒来时，你已经回到营地。");
-        if (lostGold > 0) {
-            lines.push_back("丢失了 " + std::to_string(lostGold) + " 枚金币。");
-        }
-        showResult("宝箱怪 · 战败", lines, UI::Color::BrightRed);
-        return "宝箱怪把你打昏了。醒来时你回到了营地。";
+        defeated = true;
+        return handleDefeat(mimic->getName());
     }
 
     showResult("逃  离", {"你退出了奖励房间。"}, UI::Color::Gray);
@@ -2332,64 +2554,25 @@ std::string Game::explore() {
     }
 
     showEnterRuinsCutscene();
-    showAreaIntro(storyStage_);
+    const int runStage = storyStage_;
+    showAreaIntro(runStage);
 
-    const bool bossBattle = (storyStage_ == kStoryClueCount - 1);
+    const bool bossRun = (runStage == kStoryClueCount - 1);
+    bool bossDefeated = false;
+    bool clueFound = false;
+    int floor = 1;
+    int depth = 0;
 
-    int progress = 1;
-    int playerColumn = 10;
-    std::unique_ptr<Monster> monster;
-    bool disasterShown = false;
-
-    while (true) {
-        renderTravel(progress, playerColumn);
-
-        const int choice = UI::readChoice(UI::paint("  选择 > ", UI::Color::BrightGreen), 1, 3);
-        if (choice == 2) {
-            showStatusScreen();
-            continue;
-        }
-        if (choice == 3 || choice == -1) {
-            showReturnCutscene();
-            return "你沿着来路退回营地。";
-        }
-
-        if (progress < 3) {
-            const int targetColumn = playerColumn + 24;
-            animateWalk(playerColumn, targetColumn, progress);
-            playerColumn = targetColumn;
-            ++progress;
-            if (!disasterShown && Random::chance(0.45)) {
-                triggerTravelDisaster();
-                disasterShown = true;
-            }
-        } else {
-            animateWalk(playerColumn, 70, progress);
-            playerColumn = 70;
-            UI::sleepFor(200);
-            if (!disasterShown) {
-                triggerTravelDisaster();
-                disasterShown = true;
-            }
-            monster = bossBattle ? createGuardian() : createRandomMonster();
-            showEncounterCutscene(*monster);
-            break;
-        }
-    }
-
-    Battle battle(player_, storyStage_);
-    const BattleResult result = battle.fight(*monster);
-
-    if (result == BattleResult::Victory) {
-        const int levelsGained = player_.gainExperience(monster->getExpReward());
-        player_.gainGold(monster->getGoldReward());
+    const auto grantVictoryRewards = [&](Monster& monster) {
+        const int levelsGained = player_.gainExperience(monster.getExpReward());
+        player_.gainGold(monster.getGoldReward());
 
         std::vector<std::string> lines;
-        lines.push_back("你击败了" + monster->getName() + "。");
-        lines.push_back("获得 " + std::to_string(monster->getGoldReward()) + " 金币、" +
-                        std::to_string(monster->getExpReward()) + " 经验。");
+        lines.push_back("你击败了" + monster.getName() + "。");
+        lines.push_back("获得 " + std::to_string(monster.getGoldReward()) + " 金币、" +
+                        std::to_string(monster.getExpReward()) + " 经验。");
 
-        std::unique_ptr<Item> drop = monster->rollDrop();
+        std::unique_ptr<Item> drop = monster.rollDrop();
         if (drop) {
             const std::string dropName = drop->getName();
             if (player_.getInventory().canAdd()) {
@@ -2405,52 +2588,142 @@ std::string Game::explore() {
             lines.push_back("HP/MP 已恢复，属性提升。");
         }
         showResult("胜  利", lines, UI::Color::BrightYellow);
+    };
 
-        if (bossBattle) {
+    while (true) {
+        renderCorridor(floor, depth, runStage);
+
+        const int choice = UI::readChoice(
+            UI::paint("  选择 > ", UI::Color::BrightGreen), 1, 3);
+        if (choice == 2) {
+            showStatusScreen();
+            continue;
+        }
+        if (choice == 3 || choice == -1) {
+            showReturnCutscene();
+            return "你沿着通道退回营地。";
+        }
+
+        ++depth;
+
+        // 三灾仍可能在通道里发生；非战斗事件最多把人压到 1 HP。
+        if (Random::chance(0.28)) {
+            triggerTravelDisaster();
+        }
+
+        // 第 8 段线索前的核心门厅：走到一定深度后固定遭遇封存骑士。
+        if (bossRun && !bossDefeated && depth >= 3) {
             showStoryPage(
-                "守护者 · 封存解除",
+                "核心门前",
                 {
-                    "封存骑士的甲胄从胸口裂开。里面没有身体，只有一枚停转的齿轮。",
-                    "它最后重复了一次旧命令：‘封存……完成。’",
-                    "挡在门前的锁链松开了一道。门上的识别装置随即亮起。"
+                    "通道在尽头收窄，一扇没有把手的门嵌在岩壁里。",
+                    "锁链已经松开，门后传来沉重而缓慢的呼吸声。",
+                    "封存骑士从黑暗里驶出。它仍守着旧王朝的最后一道命令。"
                 },
                 UI::Color::BrightMagenta,
-                "  按回车继续 > ");
+                "  按回车迎战 > ");
+
+            std::unique_ptr<Monster> boss = createGuardian();
+            showEncounterCutscene(*boss);
+
+            Battle battle(player_, storyStage_);
+            const BattleResult result = battle.fight(*boss);
+            if (result == BattleResult::Victory) {
+                grantVictoryRewards(*boss);
+                bossDefeated = true;
+                showStoryPage(
+                    "守护者 · 封存解除",
+                    {
+                        "封存骑士的甲胄从胸口裂开。里面没有身体，只有一枚停转的齿轮。",
+                        "它最后重复了一次旧命令：‘封存……完成。’",
+                        "挡在门前的锁链松开了一道。门上的识别装置随即亮起。"
+                    },
+                    UI::Color::BrightMagenta,
+                    "  按回车继续 > ");
+                if (!clueFound) {
+                    showStoryBeat();
+                    clueFound = true;
+                }
+                continue;
+            }
+
+            if (result == BattleResult::Defeat) {
+                return handleDefeat(boss->getName());
+            }
+
+            showReturnCutscene();
+            return "你退回通道。封存骑士仍守在核心门前。";
         }
 
-        showStoryBeat();
-        const std::string rewardMessage = showRewardRoom();
-        showReturnCutscene();
-        const std::string outcome = bossBattle
-                                        ? "封存骑士倒下了。核心的门已经打开。"
-                                        : "你带着新发现的记录回到营地。";
-        return outcome + " " + rewardMessage;
+        const int monsterChance = 25;
+        const int doorChance = 15 + std::min(depth, 6) * 2;
+        const int trapChance = 12;
+        const int caveChance = 8;
+        const int corpseChance = 10;
+
+        const int roll = Random::integer(0, 99);
+        if (roll < monsterChance) {
+            std::unique_ptr<Monster> monster = createRandomMonster(floor);
+            showEncounterCutscene(*monster);
+
+            Battle battle(player_, storyStage_);
+            const BattleResult result = battle.fight(*monster);
+            if (result == BattleResult::Victory) {
+                grantVictoryRewards(*monster);
+                if (!clueFound && !bossRun) {
+                    showStoryBeat();
+                    clueFound = true;
+                }
+                continue;
+            }
+
+            if (result == BattleResult::Defeat) {
+                return handleDefeat(monster->getName());
+            }
+
+            showReturnCutscene();
+            return "你退回通道，决定先回营地。";
+        }
+
+        int threshold = monsterChance + doorChance;
+        if (roll < threshold) {
+            std::string doorMessage;
+            if (!handleCorridorDoor(floor, doorMessage)) {
+                return doorMessage;
+            }
+            continue;
+        }
+
+        threshold += trapChance;
+        if (roll < threshold) {
+            handleCorridorTrap(floor);
+            continue;
+        }
+
+        threshold += caveChance;
+        if (roll < threshold) {
+            int nextFloor = floor;
+            handleCorridorCaveIn(floor, nextFloor);
+            floor = nextFloor;
+            continue;
+        }
+
+        threshold += corpseChance;
+        if (roll < threshold) {
+            handleCorridorCorpse();
+            continue;
+        }
+
+        static const std::vector<std::string> quietLines = {
+            "你继续往前走。火把的光只够照亮脚下几步。",
+            "通道里只有水滴声。你听了一会儿，确定那不是脚步。",
+            "墙上有一道旧裂缝，形状像某种被遗忘的文字。",
+            "你停下来辨认方向。回声从更深的地方传回来。"
+        };
+        showStoryPage("通道", {quietLines[static_cast<std::size_t>(
+                                   Random::integer(0, static_cast<int>(quietLines.size()) - 1))]},
+                      UI::Color::Gray, "  按回车继续 > ");
     }
-
-    if (result == BattleResult::Defeat) {
-        const int lostGold = std::min(10, player_.getGold());
-        if (lostGold > 0) {
-            player_.spendGold(lostGold);
-        }
-        player_.restoreAll();
-
-        std::vector<std::string> lines;
-        lines.push_back("你被" + monster->getName() + "击倒。");
-        lines.push_back("醒来时，你回到了营地。");
-        if (lostGold > 0) {
-            lines.push_back("丢失了 " + std::to_string(lostGold) + " 枚金币。");
-        }
-        if (bossBattle) {
-            lines.push_back("封存骑士仍守在核心门前。");
-        }
-        showResult("战  败", lines, UI::Color::BrightRed);
-        return bossBattle ? "你在营地休整。封存骑士仍在核心门前。"
-                          : "你在营地休整，准备再次出发。";
-    }
-
-    showReturnCutscene();
-    return bossBattle ? "你退回营地。封存骑士没有追来，仍守着核心的门。"
-                      : "你退回营地，拍了拍身上的灰。";
 }
 
 void Game::renderFarewell(const std::string& warning) const {

@@ -1,5 +1,6 @@
 #include "Monster.h"
 
+#include <algorithm>
 #include <utility>
 
 Monster::Monster(std::string name, int maxHp, int attack, int defense,
@@ -32,4 +33,13 @@ bool Monster::isBoss() const {
 
 std::unique_ptr<Item> Monster::rollDrop() const {
     return nullptr;
+}
+
+void Monster::scaleForFloor(int floor) {
+    const int extra = std::max(0, floor - 1);
+    if (extra == 0) {
+        return;
+    }
+    growStats(extra * 4, 0, extra, extra / 2);
+    restoreAll();
 }

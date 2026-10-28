@@ -38,6 +38,9 @@ public:
     // 默认不掉落；具体怪物重写。
     virtual std::unique_ptr<Item> rollDrop() const;
 
+    // 通道层数越深，普通怪物的基础属性越高。
+    void scaleForFloor(int floor);
+
 private:
     int expReward_;
     int goldReward_;

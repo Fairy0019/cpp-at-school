@@ -38,10 +38,10 @@ private:
     void showEnterRuinsCutscene() const;
     void showAreaIntro(int stage) const;
     void showEncounterCutscene(const Monster& monster) const;
-    std::unique_ptr<Monster> createRandomMonster() const;
+    std::unique_ptr<Monster> createRandomMonster(int floor) const;
     std::unique_ptr<Monster> createGuardian() const;
     std::unique_ptr<Monster> createMimic() const;
-    std::string showRewardRoom();
+    std::string showRewardRoom(bool& defeated);
     void grantChestLoot(std::vector<std::string>& lines);
     void showReturnCutscene() const;
     void showCoreSealedScene() const;
@@ -49,8 +49,12 @@ private:
     void showEnding(int choice) const;
     void renderCamp(const std::string& message) const;
     void showCampTalk();
-    void renderTravel(int progress, int playerColumn) const;
-    void animateWalk(int fromColumn, int toColumn, int progress) const;
+    void renderCorridor(int floor, int depth, int areaStage) const;
+    void handleCorridorTrap(int floor);
+    void handleCorridorCaveIn(int floor, int& nextFloor);
+    void handleCorridorCorpse();
+    bool handleCorridorDoor(int& floor, std::string& message);
+    std::string handleDefeat(const std::string& enemyName);
     void triggerTravelDisaster();
     void showStatusScreen() const;
     void showShop();
