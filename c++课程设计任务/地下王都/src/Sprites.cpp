@@ -110,6 +110,15 @@ const std::vector<std::string> kCorpse = {
     "     / \\"
 };
 
+// 隐藏房间里的先祖遗骸：梁上垂下的绳索和被绞死的身影。
+const std::vector<std::string> kAncestor = {
+    "      │",
+    "   ┌──┴──┐",
+    "   │ 遗骸 │",
+    "   └──┬──┘",
+    "     / \\"
+};
+
 }  // namespace
 
 namespace Sprites {
@@ -164,6 +173,10 @@ const std::vector<std::string>& mimic() {
 
 const std::vector<std::string>& corpse() {
     return kCorpse;
+}
+
+const std::vector<std::string>& ancestor() {
+    return kAncestor;
 }
 
 }  // namespace Sprites

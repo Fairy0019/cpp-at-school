@@ -33,6 +33,15 @@ void clearScreen();
 // 当前输出是否连接到真实控制台（用于播放走路动画）。
 bool isInteractive();
 
+// 逐字输出用的光标控制；输出被重定向时这些函数不做任何事。
+bool ansiEnabled();
+void saveCursor();
+void restoreCursor();
+void moveCursorUp(int lines);
+void moveCursorRight(int columns);
+void hideCursor();
+void showCursor();
+
 // 仅在交互式控制台暂停指定毫秒。
 void sleepFor(int milliseconds);
 

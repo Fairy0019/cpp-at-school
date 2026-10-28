@@ -36,6 +36,7 @@ constexpr int kStoryClueCount = 8;
 struct StoryProgress {
     int stage = 0;
     int ending = 0;
+    std::set<std::string> flags;
 };
 
 StoryProgress loadStoryProgress(const std::string& playerName) {
@@ -61,17 +62,23 @@ StoryProgress loadStoryProgress(const std::string& playerName) {
             } catch (const std::exception&) {
                 // 旧存档或损坏字段：保留默认结局标记。
             }
+        } else if (line.rfind("flag=", 0) == 0 && line.size() > 5) {
+            progress.flags.insert(line.substr(5));
         }
     }
     return progress;
 }
 
-void saveStoryProgress(const std::string& playerName, int stage, int ending) {
+void saveStoryProgress(const std::string& playerName, int stage, int ending,
+                       const std::set<std::string>& flags) {
     std::ofstream output(kStoryProgressFile, std::ios::out | std::ios::trunc);
     if (output) {
         output << "name=" << playerName << "\n" << stage << "\n";
         if (ending >= 1 && ending <= 4) {
             output << "ending=" << ending << "\n";
+        }
+        for (const std::string& flag : flags) {
+            output << "flag=" << flag << "\n";
         }
     }
 }
@@ -577,6 +584,11 @@ void Game::run() {
     const StoryProgress progress = loadStoryProgress(player_.getName());
     storyStage_ = progress.stage;
     storyEnding_ = progress.ending;
+    storyFlags_ = progress.flags;
+    survivorTalked_ = hasStoryFlag("talk.survivor");
+    askedSurvivorDisaster_ = hasStoryFlag("talk.disaster");
+    askedSurvivorRuins_ = hasStoryFlag("talk.ruins");
+    askedSurvivorKnights_ = hasStoryFlag("talk.knights");
 
     if (resumedFromSave_) {
         showReawakening();
@@ -718,7 +730,7 @@ void Game::showPrologueScreen() const {
         "序章 · 不合时令的灾难",
         {
             "先是雪。盛夏的雪压在屋脊上，像一层没有温度的灰。",
-            "然后是震动。墙上的灰簌簌落下，远处的天边亮起火光。",
+            "然后是震动。山体裂开，火山灰混着火星落下来。",
             "人们说这是三场灾难。可它们偏偏在同一天到来。",
             "你被埋在塌下的屋檐下，听见地底传来一声很慢的脉动。"
         },
@@ -1045,7 +1057,8 @@ bool Game::registerNewIdentity(std::string& message) {
         return false;
     }
 
-    saveStoryProgress(newPlayer.getName(), 0, 0);
+    saveStoryProgress(newPlayer.getName(), 0, 0, {});
+    storyFlags_.clear();
 
     player_ = std::move(newPlayer);
     resumedFromSave_ = false;
@@ -1160,8 +1173,8 @@ void Game::showCityEntryNarration() const {
     frame.addBlank();
     frame.addCentered(UI::paint("城门在你身后合拢。", UI::Color::BrightCyan));
     frame.addBlank();
-    frame.addCentered("街上留着低头行走的人影，看不清脸，像凝固的最后一幕。");
-    frame.addCentered("这里的人用身份牌代替脸。假身份、抢劫和失踪，都没人过问。");
+    frame.addCentered("街上留着低头行走的人影。他们戴着面具，脸藏在灰烬和护目镜后面。");
+    frame.addCentered("这里的人用身份牌登记身份。假身份、抢劫和失踪，都没人过问。");
     frame.addCentered("一个披灰布的人从巷口看了你一眼，又低下头。");
     frame.addCentered("门卫的识别声已停，胸前的临时身份牌却仍透着凉意。");
     frame.addBlank();
@@ -1274,8 +1287,18 @@ bool Game::showStoryBeat() {
                   "  按回车继续 > ");
 
     ++storyStage_;
-    saveStoryProgress(player_.getName(), storyStage_, storyEnding_);
+    saveStoryProgress(player_.getName(), storyStage_, storyEnding_, storyFlags_);
     return true;
+}
+
+bool Game::hasStoryFlag(const std::string& flag) const {
+    return storyFlags_.find(flag) != storyFlags_.end();
+}
+
+void Game::setStoryFlag(const std::string& flag) {
+    if (storyFlags_.insert(flag).second) {
+        saveStoryProgress(player_.getName(), storyStage_, storyEnding_, storyFlags_);
+    }
 }
 
 void Game::showAreaIntro(int stage) const {
@@ -1351,7 +1374,7 @@ bool Game::enterCore() {
         showEnding(choice);
         storyEnding_ = choice;
         storyStage_ = kStoryClueCount + 1;
-        saveStoryProgress(player_.getName(), storyStage_, storyEnding_);
+        saveStoryProgress(player_.getName(), storyStage_, storyEnding_, storyFlags_);
         return true;
     }
 }
@@ -1753,6 +1776,70 @@ void Game::handleCorridorCorpse() {
     showResult("尸体 · 搜索", lines, UI::Color::Gray);
 }
 
+void Game::showAncestorRoom() {
+    UI::clearScreen();
+
+    Frame frame;
+    frame.addColumns(
+        UI::paint("隐藏房间 · 地下五层", UI::Color::BrightCyan),
+        UI::paint("先祖遗骸", UI::Color::Gray),
+        65);
+    frame.addDivider();
+    frame.addBlank();
+
+    for (const std::string& line : Sprites::ancestor()) {
+        frame.addCentered(UI::paint(line, UI::Color::Gray));
+    }
+
+    frame.addBlank();
+    const int textStart = frame.rowCount();
+    frame.addWrapped("塌陷矿道的尽头，有一间被封死的休息室。", "  ");
+    frame.addWrapped("梁上垂下半截绳索。遗骸下面的矿灯早已熄灭。", "  ");
+    frame.addWrapped("墙上有一个缺角的炉形记号，和你梦里的很像。", "  ");
+    std::vector<int> typedRows;
+    for (int index = textStart; index < frame.rowCount(); ++index) {
+        typedRows.push_back(index);
+    }
+    frame.addBlank();
+    frame.addDivider();
+    frame.addLine(
+        UI::paint("[1]", UI::Color::BrightYellow) + " 调查遗骸   " +
+        UI::paint("[0]", UI::Color::BrightYellow) + " 离开");
+    frame.renderTypewriter(typedRows);
+
+    setStoryFlag("ancestor.found");
+
+    const int choice = UI::readChoice(
+        UI::paint("  选择 > ", UI::Color::BrightGreen), 0, 1);
+    if (choice == 0 || choice == -1) {
+        return;
+    }
+
+    showStoryPage(
+        "调查 · 绞索与遗骸",
+        {
+            "绳索已经干硬。遗骸的衣料不是这个时代的样式。",
+            "矿灯、镐、半张身份牌。牌上的名字被磨掉了。",
+            "墙上有古国文字和一个家族记号。你梦里缺角的炉形，和它几乎一样。",
+            "他不是第一个顺着同一个梦来到这里的人。"
+        },
+        UI::Color::Gray,
+        "  按回车继续 > ");
+
+    showStoryPage(
+        "遗物 · 互相矛盾的说法",
+        {
+            "官方档案说他是煽动矿工、破坏开采的叛徒。",
+            "商人说遗骸只是替身，家族记号是后来刻上去的。",
+            "考古者说这可能是更早的矿工；四骑士认得记号，却未必愿意说。",
+            "没有一种说法能完全对上。但有一件事很清楚：这条路，已经有人走过。"
+        },
+        UI::Color::BrightYellow,
+        "  按回车继续 > ");
+
+    setStoryFlag("ancestor.read");
+}
+
 bool Game::handleCorridorDoor(int& floor, std::string& message) {
     UI::clearScreen();
 
@@ -2043,6 +2130,8 @@ void Game::showCampTalk() {
             case 1:
                 askedSurvivorDisaster_ = true;
                 survivorTalked_ = true;
+                setStoryFlag("talk.disaster");
+                setStoryFlag("talk.survivor");
                 if (storyStage_ >= kStoryClueCount + 1) {
                     if (storyEnding_ == 1) {
                         message = "炉子停了。雪还在下，但至少不像有人在下面喘气了。";
@@ -2065,6 +2154,8 @@ void Game::showCampTalk() {
             case 2:
                 askedSurvivorRuins_ = true;
                 survivorTalked_ = true;
+                setStoryFlag("talk.ruins");
+                setStoryFlag("talk.survivor");
                 if (storyStage_ >= kStoryClueCount + 1) {
                     if (storyEnding_ == 1) {
                         message = "核心已经封了。你出来的时候，脸上像老了好几岁。";
@@ -2087,6 +2178,8 @@ void Game::showCampTalk() {
             case 3:
                 askedSurvivorKnights_ = true;
                 survivorTalked_ = true;
+                setStoryFlag("talk.knights");
+                setStoryFlag("talk.survivor");
                 if (storyStage_ >= kStoryClueCount + 1) {
                     if (storyEnding_ == 1) {
                         message = "骑士都停了。至少，没人再听见甲胄的声音。";
@@ -2674,7 +2767,8 @@ std::string Game::explore() {
         CaveIn,
         Corpse,
         Quiet,
-        Boss
+        Boss,
+        AncestorRoom
     };
 
     struct Pose {
@@ -2706,6 +2800,13 @@ std::string Game::explore() {
             pending = PendingEvent::Boss;
             previewArt = &Sprites::guardian();
             previewColor = UI::Color::BrightMagenta;
+            return;
+        }
+
+        if (floor == 5 && !hasStoryFlag("ancestor.read") && Random::chance(0.35)) {
+            pending = PendingEvent::AncestorRoom;
+            previewArt = &Sprites::ancestor();
+            previewColor = UI::Color::Gray;
             return;
         }
 
@@ -2899,6 +3000,10 @@ std::string Game::explore() {
 
             case PendingEvent::Corpse:
                 handleCorridorCorpse();
+                break;
+
+            case PendingEvent::AncestorRoom:
+                showAncestorRoom();
                 break;
 
             case PendingEvent::Quiet: {

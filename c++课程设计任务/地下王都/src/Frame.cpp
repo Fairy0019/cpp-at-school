@@ -144,47 +144,76 @@ void Frame::renderTypewriter(const std::vector<int>& typedRows) const {
     const int topPadding = extra / 2;
     const int bottomPadding = extra - topPadding;
 
-    std::cout << UI::paint("╔" + horizontal + "╗", UI::Color::Cyan) << "\n";
-    for (int index = 0; index < topPadding; ++index) {
-        std::cout << blank << "\n";
+    const bool animate = UI::isInteractive() && !typedRows.empty();
+    std::vector<bool> typed(rows_.size(), false);
+    for (int index : typedRows) {
+        if (index >= 0 && index < static_cast<int>(rows_.size()) &&
+            rows_[static_cast<std::size_t>(index)].kind == Row::Kind::Text) {
+            typed[static_cast<std::size_t>(index)] = true;
+        }
     }
 
+    std::vector<std::string> lines;
+    lines.reserve(static_cast<std::size_t>(topPadding + bottomPadding + rows_.size() + 2));
+    lines.push_back(UI::paint("╔" + horizontal + "╗", UI::Color::Cyan));
+    for (int index = 0; index < topPadding; ++index) {
+        lines.push_back(blank);
+    }
     for (int index = 0; index < static_cast<int>(rows_.size()); ++index) {
         const Row& row = rows_[static_cast<std::size_t>(index)];
         if (row.kind == Row::Kind::Divider) {
-            std::cout << UI::paint("╠" + horizontal + "╣", UI::Color::Cyan) << "\n";
+            lines.push_back(UI::paint("╠" + horizontal + "╣", UI::Color::Cyan));
+        } else if (animate && typed[static_cast<std::size_t>(index)]) {
+            lines.push_back(side + "  " +
+                            std::string(static_cast<std::size_t>(contentWidth()), ' ') +
+                            "  " + side);
+        } else {
+            lines.push_back(side + "  " + UI::fit(row.text, contentWidth()) + "  " + side);
+        }
+    }
+    for (int index = 0; index < bottomPadding; ++index) {
+        lines.push_back(blank);
+    }
+    lines.push_back(UI::paint("╚" + horizontal + "╝", UI::Color::Cyan));
+
+    for (const std::string& line : lines) {
+        std::cout << line << "\n";
+    }
+    std::cout.flush();
+
+    if (!animate) {
+        return;
+    }
+
+    UI::saveCursor();
+    UI::hideCursor();
+
+    const int totalLines = static_cast<int>(lines.size());
+    for (int index = 0; index < static_cast<int>(rows_.size()); ++index) {
+        if (!typed[static_cast<std::size_t>(index)]) {
             continue;
         }
 
-        std::cout << side << "  ";
+        UI::restoreCursor();
+        const int lineIndex = 1 + topPadding + index;
+        UI::moveCursorUp(totalLines - lineIndex);
+        UI::moveCursorRight(3);
 
-        const bool typed = std::find(typedRows.begin(), typedRows.end(), index) != typedRows.end();
-        if (!typed) {
-            std::cout << UI::fit(row.text, contentWidth());
-        } else {
-            std::string line = UI::fit(row.text, contentWidth());
-            while (!line.empty() && line.back() == ' ') {
-                line.pop_back();
-            }
-
-            std::size_t leading = 0;
-            while (leading < line.size() && line[leading] == ' ') {
-                ++leading;
-            }
-            std::cout << line.substr(0, leading);
-            UI::typeText(line.substr(leading), 6);
-
-            const int used = UI::displayWidth(line);
-            if (used < contentWidth()) {
-                std::cout << std::string(static_cast<std::size_t>(contentWidth() - used), ' ');
-            }
+        std::string content = UI::fit(rows_[static_cast<std::size_t>(index)].text,
+                                      contentWidth());
+        while (!content.empty() && content.back() == ' ') {
+            content.pop_back();
         }
 
-        std::cout << "  " << side << "\n";
+        std::size_t leading = 0;
+        while (leading < content.size() && content[leading] == ' ') {
+            ++leading;
+        }
+        std::cout << content.substr(0, leading);
+        UI::typeText(content.substr(leading), 6);
     }
 
-    for (int index = 0; index < bottomPadding; ++index) {
-        std::cout << blank << "\n";
-    }
-    std::cout << UI::paint("╚" + horizontal + "╝", UI::Color::Cyan) << "\n";
+    UI::restoreCursor();
+    UI::showCursor();
+    std::cout.flush();
 }

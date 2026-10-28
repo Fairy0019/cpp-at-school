@@ -26,6 +26,11 @@ namespace {
 bool g_ansiEnabled = false;
 bool g_consoleAttached = false;
 
+#ifdef _WIN32
+COORD g_savedCursor = {0, 0};
+bool g_hasSavedCursor = false;
+#endif
+
 // 返回从 index 开始的 ANSI 转义序列结束位置（不含）。
 std::size_t ansiEnd(const std::string& text, std::size_t index) {
     if (index + 1 >= text.size() || text[index] != '\x1b' || text[index + 1] != '[') {
@@ -178,6 +183,135 @@ void clearScreen() {
 
 bool isInteractive() {
     return g_consoleAttached;
+}
+
+bool ansiEnabled() {
+    return g_ansiEnabled;
+}
+
+void saveCursor() {
+#ifdef _WIN32
+    if (g_consoleAttached) {
+        HANDLE output = GetStdHandle(STD_OUTPUT_HANDLE);
+        CONSOLE_SCREEN_BUFFER_INFO info;
+        if (output != INVALID_HANDLE_VALUE &&
+            GetConsoleScreenBufferInfo(output, &info)) {
+            g_savedCursor = info.dwCursorPosition;
+            g_hasSavedCursor = true;
+        }
+        std::cout.flush();
+        return;
+    }
+#endif
+    if (g_ansiEnabled) {
+        std::cout << "\x1b[s";
+        std::cout.flush();
+    }
+}
+
+void restoreCursor() {
+#ifdef _WIN32
+    if (g_consoleAttached) {
+        if (g_hasSavedCursor) {
+            HANDLE output = GetStdHandle(STD_OUTPUT_HANDLE);
+            SetConsoleCursorPosition(output, g_savedCursor);
+        }
+        std::cout.flush();
+        return;
+    }
+#endif
+    if (g_ansiEnabled) {
+        std::cout << "\x1b[u";
+        std::cout.flush();
+    }
+}
+
+void moveCursorUp(int lines) {
+    if (lines <= 0) {
+        return;
+    }
+#ifdef _WIN32
+    if (g_consoleAttached) {
+        HANDLE output = GetStdHandle(STD_OUTPUT_HANDLE);
+        CONSOLE_SCREEN_BUFFER_INFO info;
+        if (output != INVALID_HANDLE_VALUE &&
+            GetConsoleScreenBufferInfo(output, &info)) {
+            COORD position = info.dwCursorPosition;
+            position.Y = static_cast<SHORT>(
+                std::max<int>(0, position.Y - lines));
+            SetConsoleCursorPosition(output, position);
+        }
+        std::cout.flush();
+        return;
+    }
+#endif
+    if (g_ansiEnabled) {
+        std::cout << "\x1b[" << lines << "A";
+        std::cout.flush();
+    }
+}
+
+void moveCursorRight(int columns) {
+    if (columns <= 0) {
+        return;
+    }
+#ifdef _WIN32
+    if (g_consoleAttached) {
+        HANDLE output = GetStdHandle(STD_OUTPUT_HANDLE);
+        CONSOLE_SCREEN_BUFFER_INFO info;
+        if (output != INVALID_HANDLE_VALUE &&
+            GetConsoleScreenBufferInfo(output, &info)) {
+            COORD position = info.dwCursorPosition;
+            position.X = static_cast<SHORT>(
+                std::min<int>(info.dwSize.X - 1, position.X + columns));
+            SetConsoleCursorPosition(output, position);
+        }
+        std::cout.flush();
+        return;
+    }
+#endif
+    if (g_ansiEnabled) {
+        std::cout << "\x1b[" << columns << "C";
+        std::cout.flush();
+    }
+}
+
+void hideCursor() {
+#ifdef _WIN32
+    if (g_consoleAttached) {
+        HANDLE output = GetStdHandle(STD_OUTPUT_HANDLE);
+        CONSOLE_CURSOR_INFO info;
+        if (output != INVALID_HANDLE_VALUE &&
+            GetConsoleCursorInfo(output, &info)) {
+            info.bVisible = FALSE;
+            SetConsoleCursorInfo(output, &info);
+        }
+        return;
+    }
+#endif
+    if (g_ansiEnabled) {
+        std::cout << "\x1b[?25l";
+        std::cout.flush();
+    }
+}
+
+void showCursor() {
+#ifdef _WIN32
+    if (g_consoleAttached) {
+        HANDLE output = GetStdHandle(STD_OUTPUT_HANDLE);
+        CONSOLE_CURSOR_INFO info;
+        if (output != INVALID_HANDLE_VALUE &&
+            GetConsoleCursorInfo(output, &info)) {
+            info.bVisible = TRUE;
+            SetConsoleCursorInfo(output, &info);
+        }
+        return;
+    }
+#endif
+    if (g_ansiEnabled) {
+        std::cout << "\x1b[?25h";
+        std::cout.flush();
+    }
 }
 
 void sleepFor(int milliseconds) {

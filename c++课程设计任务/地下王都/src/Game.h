@@ -5,6 +5,7 @@
 #include "UI.h"
 
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -34,6 +35,8 @@ private:
     bool chooseIdentitySpecies(std::string& species) const;
     void showCityEntryNarration() const;
     void showReawakening() const;
+    bool hasStoryFlag(const std::string& flag) const;
+    void setStoryFlag(const std::string& flag);
 
     void showEnterRuinsCutscene() const;
     void showAreaIntro(int stage) const;
@@ -57,6 +60,7 @@ private:
     void handleCorridorCaveIn(int floor, int& nextFloor);
     void handleCorridorCorpse();
     bool handleCorridorDoor(int& floor, std::string& message);
+    void showAncestorRoom();
     std::string handleDefeat(const std::string& enemyName);
     void triggerTravelDisaster();
     void showStatusScreen() const;
@@ -86,4 +90,5 @@ private:
     bool askedSurvivorDisaster_;
     bool askedSurvivorRuins_;
     bool askedSurvivorKnights_;
+    std::set<std::string> storyFlags_;
 };

@@ -34,7 +34,7 @@ DisasterEvent generate(int storyStage) {
     } else {
         event.type = DisasterType::Fire;
         event.name = "火灾";
-        event.description = "地底的热浪冲破裂缝，焦灼的气流卷过通道。";
+        event.description = "地底的热浪冲破裂缝，火山灰和焦灼的气流卷过通道。";
         event.hpDamage = 2 + stage / 3;
         event.mpDamage = 1 + (stage >= 6 ? 1 : 0);
     }

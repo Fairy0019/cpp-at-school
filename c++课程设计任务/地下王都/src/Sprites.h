@@ -20,5 +20,6 @@ const std::vector<std::string>& guardian();
 const std::vector<std::string>& chest();
 const std::vector<std::string>& mimic();
 const std::vector<std::string>& corpse();
+const std::vector<std::string>& ancestor();
 
 }  // namespace Sprites
