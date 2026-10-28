@@ -2381,7 +2381,7 @@ void Game::renderHub(int locationIndex, int playerScreen,
     frame.addDivider();
     frame.addBlank();
 
-    constexpr int kSceneRows = 7;
+    constexpr int kSceneRows = 10;
     std::vector<std::string> scene(kSceneRows);
     const auto put = [&](int row, int column, const std::string& text) {
         if (row < 0 || row >= kSceneRows || column < 0 || column >= 99) {
@@ -2390,23 +2390,26 @@ void Game::renderHub(int locationIndex, int playerScreen,
         appendAtColumn(scene[static_cast<std::size_t>(row)], text, column);
     };
 
-    // 路灯：灯 / || 支柱 / 柱。
+    // 路灯：\灯/ 灯头、柱、| | 长杆；长杆一直落到地面。
     for (int x : {6, 26, 46, 66, 86}) {
-        put(0, x, UI::paint("灯", UI::Color::BrightYellow));
-        put(1, x, UI::paint("||", UI::Color::Gray));
-        put(2, x, UI::paint("柱", UI::Color::Gray));
+        put(0, x, UI::paint("\\灯/", UI::Color::BrightYellow));
+        put(1, x + 1, UI::paint("柱", UI::Color::Gray));
+        for (int row = 2; row < kSceneRows; ++row) {
+            put(row, x + 1, UI::paint("| |", UI::Color::Gray));
+        }
     }
 
     const std::vector<std::string> playerArt = PlayerSprite::lines(player_);
     for (int index = 0; index < 4; ++index) {
-        put(3 + index, playerScreen, playerArt[static_cast<std::size_t>(index)]);
+        put(kSceneRows - 4 + index, playerScreen,
+            playerArt[static_cast<std::size_t>(index)]);
     }
 
     for (const std::string& row : scene) {
         frame.addLine(row);
     }
 
-    frame.addLine(UI::paint(floorLine(92), UI::Color::Gray));
+    frame.addLine(UI::paint(floorLine(96), UI::Color::Gray));
 
     std::string labelRow;
     for (int index = 0; index < static_cast<int>(positions.size()); ++index) {
@@ -2594,6 +2597,25 @@ void Game::showTavern() {
 }
 
 bool Game::showCityGateDialogue() {
+    const std::vector<std::vector<std::string>> talks = {
+        {
+            "机械门卫：>「临时身份牌。记录里没有你的旧档案。」<",
+            "「地下又震了。火山灰把外城的路埋了一半。」",
+            "「要出城？现在外面不比城里安全。」"
+        },
+        {
+            "「高塔的锁链是旧王都的，不是我们挂的。」",
+            "「你那张临时身份牌，进城可以，出城不保证你还能回来。」",
+            "「火山灰落进地缝，地下的东西最近醒得很勤。」"
+        },
+        {
+            "「城门登记只认牌子，不认脸。」",
+            "「外面的人越来越少，回来的人更少。」",
+            "「要出城就按 2。别在门口站太久。」"
+        }
+    };
+    std::size_t talkIndex = 0;
+
     while (true) {
         UI::clearScreen();
         Frame frame;
@@ -2611,9 +2633,9 @@ bool Game::showCityGateDialogue() {
         frame.addBlank();
 
         const int textStart = frame.rowCount();
-        frame.addWrapped("机械门卫：>「临时身份牌。记录里没有你的旧档案。」<", "  ");
-        frame.addWrapped("「地下又震了。火山灰把外城的路埋了一半。」", "  ");
-        frame.addWrapped("「要出城？现在外面不比城里安全。」", "  ");
+        for (const std::string& line : talks[talkIndex]) {
+            frame.addWrapped(line, "  ");
+        }
         std::vector<int> typedRows;
         for (int index = textStart; index < frame.rowCount(); ++index) {
             typedRows.push_back(index);
@@ -2627,8 +2649,11 @@ bool Game::showCityGateDialogue() {
             UI::paint("[0]", UI::Color::BrightYellow) + " 返回街道");
         frame.renderTypewriter(typedRows);
 
+        // 选项同时写进输入提示：终端较矮、画框底部被顶出屏幕时也能看见。
         const int choice = UI::readChoice(
-            UI::paint("  选择 > ", UI::Color::BrightGreen), 0, 2);
+            UI::paint("  选择（1 交谈 / 2 出城 / 0 返回街道） > ",
+                      UI::Color::BrightGreen),
+            0, 2);
         if (choice == 0 || choice == -1) {
             return false;
         }
@@ -2636,16 +2661,7 @@ bool Game::showCityGateDialogue() {
             return true;
         }
 
-        showStoryPage(
-            "城门 · 门卫",
-            {
-                "门卫的镜头转了一下，像是在看你身后的街道。",
-                "「高塔的锁链是旧王都的，不是我们挂的。」",
-                "「你那张临时身份牌，进城可以，出城不保证你还能回来。」",
-                "「火山灰落进地缝，地下的东西最近醒得很勤。」"
-            },
-            UI::Color::Gray,
-            "  按回车继续 > ");
+        talkIndex = (talkIndex + 1) % talks.size();
     }
 }
 
