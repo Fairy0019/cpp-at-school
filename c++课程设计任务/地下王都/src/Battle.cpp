@@ -38,6 +38,7 @@ void Battle::render(const Monster& monster, bool battleEnded) const {
     UI::clearScreen();
 
     Frame frame;
+    frame.setBottomPadding(4);
 
     frame.addColumns(
         UI::paint(monster.getBattleTitle(), UI::Color::BrightCyan),

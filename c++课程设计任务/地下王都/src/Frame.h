@@ -8,7 +8,8 @@
 class Frame {
 public:
     static constexpr int kDefaultWidth = 105;
-    static constexpr int kDefaultHeight = 32;
+    // 中景的最小高度；内容不足时在中间补空白，不再把空白平均分到上下。
+    static constexpr int kDefaultHeight = 20;
 
     explicit Frame(int width = kDefaultWidth, int minHeight = kDefaultHeight);
 
@@ -21,6 +22,13 @@ public:
     int addDivider();
 
     int rowCount() const;
+
+    // 上景 / 下景固定留白；复杂界面可把下景调到 4 行。
+    void setTopPadding(int rows);
+    void setBottomPadding(int rows);
+    // 指定上景 / 下景占用的行数；默认自动识别标题分隔线和底部短菜单。
+    void setHeaderRows(int rows);
+    void setFooterRows(int rows);
 
     void render() const;
 
@@ -41,9 +49,25 @@ private:
         std::string text;
     };
 
+    struct Padding {
+        int top;
+        int header;
+        int middleTop;
+        int middleBottom;
+        int footer;
+        int bottom;
+    };
+
     int contentWidth() const;
+    int resolvedHeaderRows() const;
+    int resolvedFooterRows(int headerRows) const;
+    Padding computePadding() const;
 
     int width_;
     int minHeight_;
+    int topPadding_ = 2;
+    int bottomPadding_ = 2;
+    int headerRows_ = -1;
+    int footerRows_ = -1;
     std::vector<Row> rows_;
 };

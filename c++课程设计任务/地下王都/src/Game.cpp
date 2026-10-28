@@ -509,8 +509,6 @@ void showStoryPage(const std::string& title,
     UI::clearScreen();
 
     Frame frame(105);
-    frame.addBlank();
-    frame.addBlank();
     frame.addCentered(UI::paint(title, color, true));
     frame.addBlank();
 
@@ -2379,7 +2377,6 @@ void Game::renderHub(int locationIndex, int playerScreen,
                   UI::Color::Yellow),
         55);
     frame.addDivider();
-    frame.addBlank();
 
     constexpr int kSceneRows = 20;
     std::vector<std::string> scene(kSceneRows);
@@ -2399,11 +2396,11 @@ void Game::renderHub(int locationIndex, int playerScreen,
         elements.push_back({row, column, UI::displayWidth(text), text});
     };
 
-    // 路灯：\灯/ 灯头、柱、|  | 长杆；长杆一直落到地面。
+    // 路灯：\灯/ 灯头、柱、|| 短杆；杆固定 5 行高。
     for (int x : {6, 26, 46, 66, 86}) {
         add(0, x, UI::paint("\\灯/", UI::Color::BrightYellow));
         add(1, x + 1, UI::paint("柱", UI::Color::Gray));
-        for (int row = 2; row < kSceneRows; ++row) {
+        for (int row = 2; row < 7; ++row) {
             add(row, x + 1, UI::paint("||", UI::Color::Gray));
         }
     }
@@ -2465,7 +2462,6 @@ void Game::renderHub(int locationIndex, int playerScreen,
                          ? "灰烬落在路灯下。四处的门都半掩着，街道尽头是封闭的高塔。"
                          : message,
                      "  ");
-    frame.addBlank();
     frame.addDivider();
     frame.addLine(
         UI::paint("[1]", UI::Color::BrightYellow) + " 向左   " +
@@ -2842,6 +2838,7 @@ void Game::renderShop(const Shop& shop, const std::string& message,
     UI::clearScreen();
 
     Frame frame;
+    frame.setBottomPadding(4);
     frame.addColumns(
         UI::paint(owner ? "地面商店"
                         : (full ? "营地 · 游商" : "营地 · 拾荒者"),
