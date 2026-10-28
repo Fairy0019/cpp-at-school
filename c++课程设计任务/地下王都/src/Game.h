@@ -82,4 +82,8 @@ private:
     int storyEnding_;
     bool shopAvailable_;
     bool resumedFromSave_;
+    bool survivorTalked_;
+    bool askedSurvivorDisaster_;
+    bool askedSurvivorRuins_;
+    bool askedSurvivorKnights_;
 };

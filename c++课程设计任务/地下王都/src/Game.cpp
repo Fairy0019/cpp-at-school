@@ -560,7 +560,9 @@ std::string cardLine(const std::string& text) {
 
 Game::Game()
     : player_("旅人"), storyStage_(0), storyEnding_(0),
-      shopAvailable_(Random::chance(0.5)), resumedFromSave_(false) {
+      shopAvailable_(Random::chance(0.5)), resumedFromSave_(false),
+      survivorTalked_(false), askedSurvivorDisaster_(false),
+      askedSurvivorRuins_(false), askedSurvivorKnights_(false) {
     // 真正的初始物品在城门登记新身份时发放。
 }
 
@@ -1515,11 +1517,13 @@ void Game::renderCamp(const std::string& message) const {
 
     frame.addDivider();
     const std::string shopLabel = shopAvailable_ ? "商店" : "与人交易";
+    const UI::Color talkColor =
+        survivorTalked_ ? UI::Color::Gray : UI::Color::BrightYellow;
     frame.addLine(
         UI::paint("[1]", UI::Color::BrightYellow) + " 查看状态   " +
         UI::paint("[2]", UI::Color::BrightYellow) + " 背包   " +
         UI::paint("[3]", UI::Color::BrightYellow) + " " + shopLabel + "   " +
-        UI::paint("[4]", UI::Color::BrightYellow) + " 交谈");
+        UI::paint("[4]", talkColor) + " " + UI::paint("交谈", talkColor));
 
     std::string exploreLabel = "进入遗迹";
     if (storyStage_ >= kStoryClueCount + 1) {
@@ -1590,16 +1594,25 @@ void Game::renderCorridor(int floor, int depth, int areaStage,
 
     // 预显示事件画在右侧，底部贴着地面横线；陷阱和塌方不预显示。
     if (previewArt != nullptr && !previewArt->empty()) {
-        const int previewX = 84 - camera;
+        int artWidth = 0;
+        for (const std::string& line : *previewArt) {
+            artWidth = std::max(artWidth, UI::displayWidth(line));
+        }
+        const int previewX = 90 - camera - artWidth / 2;
         const int artRows = static_cast<int>(previewArt->size());
         const int startRow = 6 - artRows;
-        for (int index = 0; index < artRows; ++index) {
-            const int row = startRow + index;
-            if (row < 0 || row >= 6) {
-                continue;
+        if (previewX >= 0 && previewX + artWidth < 99) {
+            for (int index = 0; index < artRows; ++index) {
+                const int row = startRow + index;
+                if (row < 0 || row >= 6) {
+                    continue;
+                }
+                put(row, previewX,
+                    UI::paint(UI::center(
+                                  (*previewArt)[static_cast<std::size_t>(index)],
+                                  artWidth),
+                              previewColor));
             }
-            put(row, previewX,
-                UI::paint((*previewArt)[static_cast<std::size_t>(index)], previewColor));
         }
     }
 
@@ -1776,14 +1789,14 @@ bool Game::handleCorridorDoor(int& floor, std::string& message) {
         return true;
     }
 
-    const int type = Random::integer(0, 2);
-    if (type == 0) {
+    const int roll = Random::integer(0, 99);
+    if (roll < 35) {
         bool defeated = false;
         message = showRewardRoom(defeated);
         return !defeated;
     }
 
-    if (type == 1) {
+    if (roll < 75) {
         const int hpHeal = player_.heal(player_.getMaxHp() / 2);
         const int mpHeal = player_.restoreMp(player_.getMaxMp() / 2);
         showStoryPage(
@@ -2004,10 +2017,19 @@ void Game::showCampTalk() {
         }
 
         frame.addDivider();
+        const UI::Color disasterColor =
+            askedSurvivorDisaster_ ? UI::Color::Gray : UI::Color::BrightYellow;
+        const UI::Color ruinsColor =
+            askedSurvivorRuins_ ? UI::Color::Gray : UI::Color::BrightYellow;
+        const UI::Color knightsColor =
+            askedSurvivorKnights_ ? UI::Color::Gray : UI::Color::BrightYellow;
         frame.addLine(
-            UI::paint("[1]", UI::Color::BrightYellow) + " 问灾难   " +
-            UI::paint("[2]", UI::Color::BrightYellow) + " 问遗迹   " +
-            UI::paint("[3]", UI::Color::BrightYellow) + " 问四骑士   " +
+            UI::paint("[1]", disasterColor) + " " +
+            UI::paint("问灾难", disasterColor) + "   " +
+            UI::paint("[2]", ruinsColor) + " " +
+            UI::paint("问遗迹", ruinsColor) + "   " +
+            UI::paint("[3]", knightsColor) + " " +
+            UI::paint("问四骑士", knightsColor) + "   " +
             UI::paint("[0]", UI::Color::BrightYellow) + " 离开");
         frame.renderTypewriter(typedRows);
 
@@ -2019,6 +2041,8 @@ void Game::showCampTalk() {
 
         switch (choice) {
             case 1:
+                askedSurvivorDisaster_ = true;
+                survivorTalked_ = true;
                 if (storyStage_ >= kStoryClueCount + 1) {
                     if (storyEnding_ == 1) {
                         message = "炉子停了。雪还在下，但至少不像有人在下面喘气了。";
@@ -2039,6 +2063,8 @@ void Game::showCampTalk() {
                 break;
 
             case 2:
+                askedSurvivorRuins_ = true;
+                survivorTalked_ = true;
                 if (storyStage_ >= kStoryClueCount + 1) {
                     if (storyEnding_ == 1) {
                         message = "核心已经封了。你出来的时候，脸上像老了好几岁。";
@@ -2059,6 +2085,8 @@ void Game::showCampTalk() {
                 break;
 
             case 3:
+                askedSurvivorKnights_ = true;
+                survivorTalked_ = true;
                 if (storyStage_ >= kStoryClueCount + 1) {
                     if (storyEnding_ == 1) {
                         message = "骑士都停了。至少，没人再听见甲胄的声音。";
