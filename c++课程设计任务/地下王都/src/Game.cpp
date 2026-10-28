@@ -429,6 +429,14 @@ std::string atColumn(const std::string& text, int column) {
     return std::string(static_cast<std::size_t>(column), ' ') + text;
 }
 
+void appendAtColumn(std::string& line, const std::string& text, int column) {
+    const int usedWidth = UI::displayWidth(line);
+    if (usedWidth < column) {
+        line.append(static_cast<std::size_t>(column - usedWidth), ' ');
+    }
+    line += text;
+}
+
 // 在同一行放置左右两段文字，用于拼出赶路场景。
 std::string sceneRow(const std::string& left,
                      int leftColumn,
@@ -1531,7 +1539,7 @@ void Game::renderCamp(const std::string& message) const {
     }
 }
 
-void Game::renderCorridor(int floor, int depth, int areaStage) const {
+void Game::renderCorridor(int floor, int depth, int areaStage, int playerColumn) const {
     UI::clearScreen();
 
     const AreaInfo& area = areaForStage(areaStage);
@@ -1551,18 +1559,40 @@ void Game::renderCorridor(int floor, int depth, int areaStage) const {
 
     const std::vector<std::string> playerArt = PlayerSprite::lines(player_);
 
-    frame.addLine(sceneRow(
-        UI::paint("火", UI::Color::Yellow), 16,
-        UI::paint("火", UI::Color::Yellow), 84));
+    const auto torchLine = [](const std::string& text) {
+        std::string line;
+        appendAtColumn(line, UI::paint(text, UI::Color::Yellow), 18);
+        appendAtColumn(line, UI::paint(text, UI::Color::Yellow), 48);
+        appendAtColumn(line, UI::paint(text, UI::Color::Yellow), 84);
+        return line;
+    };
 
-    for (int index = 0; index < 4; ++index) {
-        frame.addLine(sceneRow(playerArt[static_cast<std::size_t>(index)], 48,
+    frame.addLine(torchLine("火"));
+
+    std::vector<std::pair<int, std::string>> headParts;
+    headParts.emplace_back(18, UI::paint("把", UI::Color::Yellow));
+    headParts.emplace_back(48, UI::paint("把", UI::Color::Yellow));
+    headParts.emplace_back(playerColumn, playerArt[0]);
+    headParts.emplace_back(84, UI::paint("把", UI::Color::Yellow));
+    std::stable_sort(headParts.begin(), headParts.end(),
+                     [](const std::pair<int, std::string>& left,
+                        const std::pair<int, std::string>& right) {
+                         return left.first < right.first;
+                     });
+    std::string headRow;
+    for (const auto& part : headParts) {
+        appendAtColumn(headRow, part.second, part.first);
+    }
+    frame.addLine(headRow);
+
+    for (int index = 1; index < 4; ++index) {
+        frame.addLine(sceneRow(playerArt[static_cast<std::size_t>(index)], playerColumn,
                                std::string(), 0));
     }
 
     frame.addLine(UI::paint(floorLine(92), UI::Color::Gray));
     frame.addLine(sceneRow(
-        UI::paint(player_.getName(), UI::Color::BrightCyan), 48,
+        UI::paint(player_.getName(), UI::Color::BrightCyan), playerColumn,
         UI::paint("通道", UI::Color::Yellow), 84));
 
     frame.addBlank();
@@ -1572,9 +1602,27 @@ void Game::renderCorridor(int floor, int depth, int areaStage) const {
     frame.addLine(
         UI::paint("[1]", UI::Color::BrightYellow) + " 继续前进   " +
         UI::paint("[2]", UI::Color::BrightYellow) + " 查看状态   " +
-        UI::paint("[3]", UI::Color::BrightYellow) + " 返回营地");
+        UI::paint("[3]", UI::Color::BrightYellow) + " 背包   " +
+        UI::paint("[4]", UI::Color::BrightYellow) + " 返回营地");
 
     frame.render();
+}
+
+void Game::animateCorridorStep(int floor, int depth, int areaStage, bool moveRight) const {
+    if (!UI::isInteractive()) {
+        renderCorridor(floor, depth, areaStage);
+        return;
+    }
+
+    constexpr int kFrames = 5;
+    const int startColumn = 48;
+    const int targetColumn = moveRight ? 60 : 36;
+    for (int frame = 1; frame <= kFrames; ++frame) {
+        const int column = startColumn + (targetColumn - startColumn) * frame / kFrames;
+        renderCorridor(floor, depth, areaStage, column);
+        UI::sleepFor(55);
+    }
+    renderCorridor(floor, depth, areaStage);
 }
 
 void Game::handleCorridorTrap(int floor) {
@@ -2594,17 +2642,22 @@ std::string Game::explore() {
         renderCorridor(floor, depth, runStage);
 
         const int choice = UI::readChoice(
-            UI::paint("  选择 > ", UI::Color::BrightGreen), 1, 3);
+            UI::paint("  选择 > ", UI::Color::BrightGreen), 1, 4);
         if (choice == 2) {
             showStatusScreen();
             continue;
         }
-        if (choice == 3 || choice == -1) {
+        if (choice == 3) {
+            showInventoryScreen();
+            continue;
+        }
+        if (choice == 4 || choice == -1) {
             showReturnCutscene();
             return "你沿着通道退回营地。";
         }
 
         ++depth;
+        animateCorridorStep(floor, depth, runStage, depth % 2 == 0);
 
         // 三灾仍可能在通道里发生；非战斗事件最多把人压到 1 HP。
         if (Random::chance(0.28)) {

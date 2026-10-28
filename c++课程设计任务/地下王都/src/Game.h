@@ -49,7 +49,8 @@ private:
     void showEnding(int choice) const;
     void renderCamp(const std::string& message) const;
     void showCampTalk();
-    void renderCorridor(int floor, int depth, int areaStage) const;
+    void renderCorridor(int floor, int depth, int areaStage, int playerColumn = 48) const;
+    void animateCorridorStep(int floor, int depth, int areaStage, bool moveRight) const;
     void handleCorridorTrap(int floor);
     void handleCorridorCaveIn(int floor, int& nextFloor);
     void handleCorridorCorpse();
