@@ -531,28 +531,6 @@ std::string corpseHint(int stage) {
     }
 }
 
-std::string shortMonsterName(const std::string& name) {
-    if (name == "遗迹鼠") {
-        return "鼠";
-    }
-    if (name == "水史莱姆") {
-        return "水怪";
-    }
-    if (name == "火史莱姆") {
-        return "火怪";
-    }
-    if (name == "哥布林") {
-        return "哥布";
-    }
-    if (name == "封存骑士") {
-        return "骑士";
-    }
-    if (name == "宝箱怪") {
-        return "箱怪";
-    }
-    return "怪物";
-}
-
 std::string trimText(const std::string& text) {
     std::size_t begin = 0;
     while (begin < text.size() && std::isspace(static_cast<unsigned char>(text[begin]))) {
@@ -1563,7 +1541,7 @@ void Game::renderCamp(const std::string& message) const {
 
 void Game::renderCorridor(int floor, int depth, int areaStage,
                           int playerScreen, int camera,
-                          const std::string& previewText,
+                          const std::vector<std::string>* previewArt,
                           UI::Color previewColor) const {
     UI::clearScreen();
 
@@ -1584,44 +1562,49 @@ void Game::renderCorridor(int floor, int depth, int areaStage,
 
     const std::vector<std::string> playerArt = PlayerSprite::lines(player_);
 
-    std::string fireRow;
-    std::string handleRow;
-    std::vector<std::pair<int, std::string>> headParts;
+    // 6 行通道画面：0—1 火把，2—5 角色 / 事件，随后是地面横线。
+    constexpr int kSceneRows = 6;
+    std::vector<std::string> scene(kSceneRows);
 
-    // 火把在通道里的世界坐标固定为每 36 列一支；镜头移动时整体左移。
-    for (int worldX = 18; worldX < 220; worldX += 36) {
+    const auto put = [&](int row, int column, const std::string& text) {
+        if (row < 0 || row >= kSceneRows || column < 0 || column >= 99) {
+            return;
+        }
+        appendAtColumn(scene[static_cast<std::size_t>(row)], text, column);
+    };
+
+    // 三支火把把画面分成四块：15 / 45 / 75 为世界坐标，镜头移动时整体左移。
+    for (int worldX = 15; worldX < 300; worldX += 30) {
         const int screenX = worldX - camera;
         if (screenX < 0 || screenX >= 99) {
             continue;
         }
-        appendAtColumn(fireRow, UI::paint("火", UI::Color::Yellow), screenX);
-        appendAtColumn(handleRow, UI::paint("把", UI::Color::Yellow), screenX);
-        headParts.emplace_back(screenX, UI::paint("把", UI::Color::Yellow));
+        put(0, screenX, UI::paint("火", UI::Color::Yellow));
+        put(1, screenX, UI::paint("把", UI::Color::Yellow));
     }
 
-    if (!previewText.empty()) {
-        const int previewX = 94 - camera;
-        if (previewX >= 0 && previewX < 99) {
-            appendAtColumn(fireRow, UI::paint(previewText, previewColor), previewX);
+    // 角色从第二行开始，避开头和火把“把”字共行造成的错位。
+    for (int index = 0; index < 4; ++index) {
+        put(2 + index, playerScreen, playerArt[static_cast<std::size_t>(index)]);
+    }
+
+    // 预显示事件画在右侧，底部贴着地面横线；陷阱和塌方不预显示。
+    if (previewArt != nullptr && !previewArt->empty()) {
+        const int previewX = 84 - camera;
+        const int artRows = static_cast<int>(previewArt->size());
+        const int startRow = 6 - artRows;
+        for (int index = 0; index < artRows; ++index) {
+            const int row = startRow + index;
+            if (row < 0 || row >= 6) {
+                continue;
+            }
+            put(row, previewX,
+                UI::paint((*previewArt)[static_cast<std::size_t>(index)], previewColor));
         }
     }
-    frame.addLine(fireRow);
 
-    headParts.emplace_back(playerScreen, playerArt[0]);
-    std::stable_sort(headParts.begin(), headParts.end(),
-                     [](const std::pair<int, std::string>& left,
-                        const std::pair<int, std::string>& right) {
-                         return left.first < right.first;
-                     });
-    std::string headRow;
-    for (const auto& part : headParts) {
-        appendAtColumn(headRow, part.second, part.first);
-    }
-    frame.addLine(headRow);
-
-    for (int index = 1; index < 4; ++index) {
-        frame.addLine(sceneRow(playerArt[static_cast<std::size_t>(index)], playerScreen,
-                               std::string(), 0));
+    for (const std::string& row : scene) {
+        frame.addLine(row);
     }
 
     frame.addLine(UI::paint(floorLine(92), UI::Color::Gray));
@@ -2670,18 +2653,17 @@ std::string Game::explore() {
         int playerScreen;
         int camera;
     };
-    static const Pose poses[6] = {
-        {8, 0},
+    static const Pose poses[5] = {
+        {4, 0},
         {30, 0},
         {48, 0},
         {48, 12},
-        {48, 24},
-        {48, 36}
+        {48, 24}
     };
 
     PendingEvent pending = PendingEvent::None;
     std::unique_ptr<Monster> pendingMonster;
-    std::string previewText;
+    const std::vector<std::string>* previewArt = nullptr;
     UI::Color previewColor = UI::Color::Gray;
     int step = 0;
     int eventsResolved = 0;
@@ -2689,12 +2671,12 @@ std::string Game::explore() {
     const auto rollNextEvent = [&]() {
         step = 0;
         pendingMonster.reset();
-        previewText.clear();
+        previewArt = nullptr;
         previewColor = UI::Color::Gray;
 
         if (bossRun && !bossDefeated && eventsResolved >= 2) {
             pending = PendingEvent::Boss;
-            previewText = "骑士";
+            previewArt = &Sprites::guardian();
             previewColor = UI::Color::BrightMagenta;
             return;
         }
@@ -2709,7 +2691,7 @@ std::string Game::explore() {
         if (roll < monsterChance) {
             pending = PendingEvent::Monster;
             pendingMonster = createRandomMonster(floor);
-            previewText = shortMonsterName(pendingMonster->getName());
+            previewArt = &pendingMonster->getArt();
             previewColor = MonsterVisual::tint(pendingMonster->getColor());
             return;
         }
@@ -2717,7 +2699,7 @@ std::string Game::explore() {
         int threshold = monsterChance + doorChance;
         if (roll < threshold) {
             pending = PendingEvent::Door;
-            previewText = "门";
+            previewArt = &Sprites::door();
             previewColor = UI::Color::Yellow;
             return;
         }
@@ -2725,23 +2707,19 @@ std::string Game::explore() {
         threshold += trapChance;
         if (roll < threshold) {
             pending = PendingEvent::Trap;
-            previewText = "陷阱";
-            previewColor = UI::Color::BrightRed;
             return;
         }
 
         threshold += caveChance;
         if (roll < threshold) {
             pending = PendingEvent::CaveIn;
-            previewText = "塌方";
-            previewColor = UI::Color::BrightYellow;
             return;
         }
 
         threshold += corpseChance;
         if (roll < threshold) {
             pending = PendingEvent::Corpse;
-            previewText = "尸体";
+            previewArt = &Sprites::corpse();
             previewColor = UI::Color::Gray;
             return;
         }
@@ -2752,7 +2730,7 @@ std::string Game::explore() {
     const auto animateToStep = [&](int from, int to) {
         if (!UI::isInteractive()) {
             renderCorridor(floor, depth, runStage, poses[to].playerScreen,
-                           poses[to].camera, previewText, previewColor);
+                           poses[to].camera, previewArt, previewColor);
             return;
         }
 
@@ -2765,18 +2743,18 @@ std::string Game::explore() {
                 poses[from].camera +
                 (poses[to].camera - poses[from].camera) * frame / kFrames;
             renderCorridor(floor, depth, runStage, playerScreen, camera,
-                           previewText, previewColor);
+                           previewArt, previewColor);
             UI::sleepFor(45);
         }
         renderCorridor(floor, depth, runStage, poses[to].playerScreen,
-                       poses[to].camera, previewText, previewColor);
+                       poses[to].camera, previewArt, previewColor);
     };
 
     rollNextEvent();
 
     while (true) {
         renderCorridor(floor, depth, runStage, poses[step].playerScreen,
-                       poses[step].camera, previewText, previewColor);
+                       poses[step].camera, previewArt, previewColor);
 
         const int choice = UI::readChoice(
             UI::paint("  选择 > ", UI::Color::BrightGreen), 1, 4);
@@ -2794,13 +2772,13 @@ std::string Game::explore() {
         }
 
         ++depth;
-        if (step < 5) {
+        if (step < 4) {
             animateToStep(step, step + 1);
             ++step;
             if (Random::chance(0.08)) {
                 triggerTravelDisaster();
             }
-            if (step < 5) {
+            if (step < 4) {
                 continue;
             }
         }

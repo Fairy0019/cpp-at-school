@@ -50,8 +50,8 @@ private:
     void renderCamp(const std::string& message) const;
     void showCampTalk();
     void renderCorridor(int floor, int depth, int areaStage,
-                        int playerScreen = 8, int camera = 0,
-                        const std::string& previewText = "",
+                        int playerScreen = 4, int camera = 0,
+                        const std::vector<std::string>* previewArt = nullptr,
                         UI::Color previewColor = UI::Color::Gray) const;
     void handleCorridorTrap(int floor);
     void handleCorridorCaveIn(int floor, int& nextFloor);
