@@ -780,23 +780,26 @@ void Game::showEngineLogo() const {
 
     // 按 README 里的不规则 0/9 外框还原：0 在左，9 在右。
     const std::vector<std::string> logo = {
-        "                               0000000000000000000000000000000000000000",
-        "                      0000000000000000000000000000000000000000000000000000000000",
-        "                  00000000000000000000000000000000000000000000000000000000000000000000000000000",
-        "                000000 ██████ ╗ 00000000000000000000000000000000000000000000000000000000",
-        "              00000 ██ ╔═════╝ 999999 █ ╗ 999999 █ ╗ 99999999999999999999999999999999999999999999999",
-        "             000000 ██ ║ 999999999 ███████ ║9 ███████ ║ 999999999999999999999999999999999999999999",
-        "             000000 ██ ║ 99 ██ 9999 ╚ █ ╔╝ 999 ╚ █ ╔╝ 9999999999999999999999999999999999999999999",
-        "              00000 ╚██████ ╔═╝ 9999 ╚═╝ 999999 ╚═╝ 99999999999999999999999999999999999999999999999",
-        "               000000 ╚═════╝ 000000000000000000000000000000000000000000000000000000000000",
-        "                 000000000000000000000000000000000000000000000000000000000000000000000000",
-        "                    0000000000000000000000000000000000000000000000000000000000",
-        "                             0000000000000000000000000000000000000000"
+        "                                0000000000000000000000000000000000000000",
+        "                       0000000000000000000000000000000000000000000000000000000000",
+        "                   00000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "                 000000 ██████ ╗ 00000000000000000000000000000000000000000000000000000000",
+        "               00000 ██ ╔═════╝ 999999 █ ╗ 999999 █ ╗ 99999999999999999999999999999999999999999999999",
+        "              000000 ██ ║ 999999999 ███████ ║9 ███████ ║ 99999999999999999999999999999999999999999",
+        "              000000 ██ ║ 99 ██ 9999 ╚ █ ╔╝ 999 ╚ █ ╔╝ 9999999999999999999999999999999999999999999",
+        "               00000 ╚██████ ╔═╝ 9999 ╚═╝ 999999 ╚═╝ 9999999999999999999999999999999999999999999999",
+        "                000000 ╚═════╝ 000000000000000000000000000000000000000000000000000000000000",
+        "                  000000000000000000000000000000000000000000000000000000000000000000000000",
+        "                     0000000000000000000000000000000000000000000000000000000000",
+        "                              0000000000000000000000000000000000000000"
     };
 
     const auto colorLogoLine = [](const std::string& raw) {
-        // 去掉一个前导空格，最长的一行刚好收进 99 列内容区。
-        const std::string line = !raw.empty() && raw.front() == ' ' ? raw.substr(1) : raw;
+        // 去掉两个前导空格，最长的一行刚好收进 99 列内容区。
+        std::string line = raw;
+        for (int trim = 0; trim < 2 && !line.empty() && line.front() == ' '; ++trim) {
+            line.erase(line.begin());
+        }
         std::string result;
         int column = 0;
         for (std::size_t index = 0; index < line.size();) {
@@ -812,12 +815,18 @@ void Game::showEngineLogo() const {
                 bytes = 4;
             }
             const std::string glyph = line.substr(index, bytes);
-            if (glyph == "0" || glyph == "9") {
-                const double t = std::min(1.0, static_cast<double>(column) / 98.0);
-                const int red = 104 + static_cast<int>((255 - 104) * t);
-                const int green = 24 + static_cast<int>((255 - 24) * t);
-                const int blue = 208 + static_cast<int>((255 - 208) * t);
+            const double t = std::min(1.0, static_cast<double>(column) / 98.0);
+            if (glyph == "0") {
+                // 0 始终是紫色：左侧深紫，向右逐渐变亮。
+                const int red = 88 + static_cast<int>((178 - 88) * t);
+                const int green = 12 + static_cast<int>((96 - 12) * t);
+                const int blue = 198 + static_cast<int>((255 - 198) * t);
                 result += UI::paintRgb(glyph, red, green, blue);
+            } else if (glyph == "9") {
+                // 9 始终是白色：左侧带一点淡紫，向右到纯白。
+                const int red = 218 + static_cast<int>((255 - 218) * t);
+                const int green = 202 + static_cast<int>((255 - 202) * t);
+                result += UI::paintRgb(glyph, red, green, 255);
             } else if (glyph == " ") {
                 result += ' ';
             } else {
@@ -836,11 +845,17 @@ void Game::showEngineLogo() const {
     frame.addBlank();
     frame.addCentered(UI::paint("帝王引擎：C++", UI::Color::BrightYellow));
     frame.addBlank();
-    frame.addCentered(UI::paint("██", UI::Color::BrightRed) + "  " +
-                      UI::paint("██", UI::Color::BrightGreen));
-    frame.addCentered(UI::paint("██", UI::Color::BrightBlue) + "  " +
-                      UI::paint("██", UI::Color::BrightYellow) + "  " +
-                      UI::paint("Microsoft Windows", UI::Color::Gray));
+    const std::string windowsTop =
+        UI::paint("██", UI::Color::BrightRed) + " " +
+        UI::paint("██", UI::Color::BrightGreen);
+    const std::string windowsBottom =
+        UI::paint("██", UI::Color::BrightBlue) + " " +
+        UI::paint("██", UI::Color::BrightYellow) + "  " +
+        UI::paint("Microsoft Windows", UI::Color::Gray);
+    const int windowsWidth = std::max(UI::displayWidth(windowsTop),
+                                      UI::displayWidth(windowsBottom));
+    frame.addCentered(UI::padRight(windowsTop, windowsWidth));
+    frame.addCentered(windowsBottom);
 
     const std::vector<std::string> decor = {
         "           ||    ||    ||   D     ===          ||                     ___",
