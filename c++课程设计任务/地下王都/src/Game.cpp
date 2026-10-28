@@ -2495,7 +2495,7 @@ void Game::showGroundHub() {
                         message = "你从城门回到灰烬街道。";
                     }
                 } else if (location == 1) {
-                    showShop();
+                    showShop(true);
                     message = "你从商店回到灰烬街道。";
                 } else if (location == 2) {
                     showCampMenu();
@@ -2728,19 +2728,19 @@ void Game::showCampMenu() {
     SaveGame::save(player_, saveError);
 }
 
-void Game::showShop() {
-    showShopScreen(true);
+void Game::showShop(bool owner) {
+    showShopScreen(true, owner);
 }
 
 void Game::showTrader() {
-    showShopScreen(false);
+    showShopScreen(false, false);
 }
 
 void Game::refreshCampShop() {
     shopAvailable_ = Random::chance(0.5);
 }
 
-void Game::showShopScreen(bool full) {
+void Game::showShopScreen(bool full, bool owner) {
     std::unique_ptr<Shop> shop;
     if (full) {
         shop = std::make_unique<Shop>();
@@ -2749,21 +2749,22 @@ void Game::showShopScreen(bool full) {
                                       Random::real(0.75, 1.4));
     }
 
-    std::string message = full ? "看看货吧，都是遗迹里少见的好东西。"
+    std::string message = full ? (owner ? "看看货吧。我算半个考古爱好者，有古物也可以拿给我看看。"
+                                        : "看看货吧，都是遗迹里少见的好东西。")
                                : "就这些了。价格嘛，看你顺不顺眼。";
 
     while (true) {
-        renderShop(*shop, message, full);
+        renderShop(*shop, message, full, owner);
 
-        const int maxChoice = full ? 4 : 3;
+        const int maxChoice = (full && owner) ? 4 : 3;
         const int choice = UI::readChoice(
             UI::paint("  选择 > ", UI::Color::BrightGreen), 0, maxChoice);
         switch (choice) {
             case 1:
-                message = buyFromShop(*shop, full && hasStoryFlag("shop.discount"));
+                message = buyFromShop(*shop, full && owner && hasStoryFlag("shop.discount"));
                 break;
             case 2:
-                message = sellToShop(full);
+                message = sellToShop(owner);
                 break;
             case 3:
                 showInventoryScreen();
@@ -2781,12 +2782,15 @@ void Game::showShopScreen(bool full) {
     }
 }
 
-void Game::renderShop(const Shop& shop, const std::string& message, bool full) const {
+void Game::renderShop(const Shop& shop, const std::string& message,
+                      bool full, bool owner) const {
     UI::clearScreen();
 
     Frame frame;
     frame.addColumns(
-        UI::paint(full ? "地面商店" : "营地 · 拾荒者", UI::Color::BrightCyan),
+        UI::paint(owner ? "地面商店"
+                        : (full ? "营地 · 游商" : "营地 · 拾荒者"),
+                  UI::Color::BrightCyan),
         UI::paint("金币 " + std::to_string(player_.getGold()) +
                   "   背包 " + std::to_string(player_.getInventory().size()) + "/" +
                   std::to_string(player_.getInventory().capacity()),
@@ -2797,8 +2801,9 @@ void Game::renderShop(const Shop& shop, const std::string& message, bool full) c
 
     const std::vector<std::string>& art =
         full ? Sprites::merchant() : Sprites::survivor();
-    const std::string traderLabel = full ? "商店老板" : "拾荒者";
-    const bool discount = full && hasStoryFlag("shop.discount");
+    const std::string traderLabel = owner ? "商店老板"
+                                         : (full ? "游商" : "拾荒者");
+    const bool discount = full && owner && hasStoryFlag("shop.discount");
     constexpr int kMerchantWidth = 33;
     const int artRows = static_cast<int>(art.size());
     const int rowCount = std::max(artRows + 2, shop.size());
@@ -2835,7 +2840,7 @@ void Game::renderShop(const Shop& shop, const std::string& message, bool full) c
         UI::paint("[1]", UI::Color::BrightYellow) + " 购买   " +
         UI::paint("[2]", UI::Color::BrightYellow) + " 出售   " +
         UI::paint("[3]", UI::Color::BrightYellow) + " 查看背包";
-    if (full) {
+    if (full && owner) {
         menu += "   " + UI::paint("[4]", UI::Color::BrightYellow) + " 古物";
     }
     menu += "   " + UI::paint("[0]", UI::Color::BrightYellow) + " 离开";
@@ -2871,7 +2876,7 @@ std::string Game::buyFromShop(Shop& shop, bool discount) {
     return "成交，" + name + " 归你了。";
 }
 
-std::string Game::sellToShop(bool full) {
+std::string Game::sellToShop(bool owner) {
     Inventory& inventory = player_.getInventory();
     if (inventory.empty()) {
         return "背包是空的，没什么可卖的。";
@@ -2889,7 +2894,7 @@ std::string Game::sellToShop(bool full) {
     }
 
     if (item->getKind() == ItemKind::Relic) {
-        if (!full) {
+        if (!owner) {
             return "这个我不收。你拿去地面商店给老板看看，他懂古物。";
         }
         return "这块石板不按普通货收。点 [4] 古物，让老板亲自看看。";

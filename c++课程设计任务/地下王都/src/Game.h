@@ -75,17 +75,18 @@ private:
     std::string handleDefeat(const std::string& enemyName);
     void triggerTravelDisaster();
     void showStatusScreen() const;
-    void showShop();
+    void showShop(bool owner = false);
     void showTrader();
-    void showShopScreen(bool full);
+    void showShopScreen(bool full, bool owner);
     void refreshCampShop();
     void showInventoryScreen();
-    void renderShop(const Shop& shop, const std::string& message, bool full) const;
+    void renderShop(const Shop& shop, const std::string& message,
+                    bool full, bool owner) const;
     void renderInventory(const std::string& title,
                          const std::string& message,
                          bool selling) const;
     std::string buyFromShop(Shop& shop, bool discount);
-    std::string sellToShop(bool full);
+    std::string sellToShop(bool owner);
     std::string tradeRelicWithOwner();
     void showResult(const std::string& title,
                     const std::vector<std::string>& lines,
