@@ -1980,23 +1980,23 @@ void Game::showHangedCorpseCG() const {
                 continue;
             }
 
-            int red = 190;
-            int green = 170;
-            int blue = 130;
+            int red = 180;
+            int green = 150;
+            int blue = 110;
             if (character == 'a' || character == 'h') {
-                red = 138; green = 133; blue = 120;
+                red = 180; green = 174; blue = 160;
             } else if (character == 'b' || character == 'd' || character == 'k') {
-                red = 107; green = 74; blue = 54;
+                red = 150; green = 125; blue = 100;
             } else if (character == 'p' || character == 'q' ||
                        character == 'w' || character == 'm') {
-                red = 160; green = 106; blue = 69;
+                red = 115; green = 85; blue = 62;
             } else if (character == 'Z' || character == 'O') {
-                red = 48; green = 18; blue = 22;
+                red = 65; green = 30; blue = 30;
             } else if (character == 'Q' || character == '0') {
-                red = 96; green = 24; blue = 28;
+                red = 35; green = 14; blue = 16;
             } else if (character == 'L' || character == 'C' ||
                        character == 'J') {
-                red = 216; green = 199; blue = 165;
+                red = 220; green = 205; blue = 175;
             }
             painted += UI::paintRgb(std::string(1, character), red, green, blue);
         }
