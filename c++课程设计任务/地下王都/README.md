@@ -211,21 +211,60 @@ C++ 课程设计项目，主题来自《设计起步稿.md》。当前是**可�
 ╚═══════════════════════════════════════════════════════════════════════════════════════════════════════╝
 ```
 
-> 纯 CG 只画 99×28 画面，不塞说明文字；说明页在 CG 后独立播放。
+**被绞死的尸体（绑在十字架上，纯 CG）**
+
+```text
+╔═══════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                                       ║
+║                                                                                                       ║
+║  hbddbbbbhhhabaahaaaaaaaaaaaaaaaaaaaaaaahaabhhhahhkkhhkkkkbbkkkkbkkhkkkhhkkahhahahhaahaaaaakkppddkbd  ║
+║  ddhbdkbdkhkakaaaaaaaaaaahhkaaaaaaaaaaaahhabbkhhbdpdbbbpbbpbkbadpbdbdbbkkddaaahkaaahakahhhkkkkdqqhbp  ║
+║  wdppdhbqkhdhbaakhaaaaaakhkhkhaaaaaaaaaahdkpdddbqmpqwqwqqqpdhkbdmZqpmqpdpbdhhaahkaahhhhkkhbkbpqwmkbb  ║
+║  dbqpqwpqhkdbdaakdaahaakbkahkkkbhahaaaahbhbpqwpqqOJOmOwqZmkwkbmw0QXOmZqqhqbdbkbkbhdhhhkbbpbkpwbbqmqb  ║
+║  pppqwpqmkkpbphkbkakhhakkbdbdbbbkhkkkkZphbdqOmqwpLQJZQQOQ0Zmp0qLCciJ0CCQqqppdbbbbhkkkhdbqddkkpmqpwwb  ║
+║  hbmwqwqOmkwddakpbhbabhbdbdddbddkkkbqbZbkkdmQp0pZQCc0QL0QOXQZC0JvrU|YcZQkmwqqppppbkbdkpddbmdbbQwwOmd  ║
+║  dq0ZmwwbqkwdqkbddahaaakbdbhkbppdkbwwbqhkdwbZqdZOYYCqLzJXC0Z0UvJYunhOv00LpqkkkddkhkkhbppqkmbbwLOpqZd  ║
+║  ZwLZLqqwqbwbppmwbddaaakZdOdqbpdpdpmdwmOkdppkOqphUJOmJYQuOUCZmp0zx0hhLLOZwqphhqpddadkqdpZbOkbOOOwqdm  ║
+║  QmULJCmwpbUbOqbbpbhbakhwpZpLbwqqmwZ0pwwmbQmCJZ0Lm0wZQJQJ0OwwOL0QOpdpqw0ZpkOphdbmwhdbqpwZpmbbqOOmCkm  ║
+║  cczYCi-wwbZhOpZdwqkhhdbbwQZdwpOqLqLmdZcnmZm00ppqmw0CQ0U0ZQLUfwhkdZqbZmOhkabpahbpwbqwpqZZbZqqZ1ZQLdp  ║
+║  XYvL~zmQZOmbOOQmdpdhhqqZJmkhwZZQXQ00pphqOLcjzqhkkkChj\f/zJCkaaaahbdbbbpmpdhwpwOdmZwqkqz0pQwbZiuLjYJ  ║
+║  00LLahO0Cd0tnjJw+dphqmmZwbqZZwOO+i{cQdhbbwpObpkkhkq\fkwLmZkaahdhqpdqmbdZpbpkmpOwmZmQX0uYXzC00zzJxYX  ║
+║  wpQOhq0LUbYUYzJ}YdbqOqwQZZpZqZOJbkuZOLbbhkkbdbqw0OvULqdbkhaqbkZdmdbbppdqhadwwbQC0qpm>0\vnCC0wqawdqQ  ║
+║  pdmabhkphppkpUdkpqZwqmqqZdmOdkOmpmwqqpqddmbbahaOQvcULahbbdwdmkOq0mddqdOqkpbm0O0pLq0OhZCOddLCQObhkap  ║
+║  mkhhbbqdhdbhbp0kqwww00OmkwdbOpdbbbwdZbdqdmqpdhaL0YzcudpqOwqdpqkpdhbbhkw0bwqkmZZOwqbpbphZqmwmwwmadaw  ║
+║  qqdwhdqbbmqkZpwqdqpdOqqwmwpqbbkhbbbkwqqmmbpkbhhXzCzfYObwwqhaQOdZphpbkkZmmhkmddqdwwkpbhkwmmqw0mmmmhp  ║
+║  khahaaabdhbhpwqphmOqpwpmqmbdkppdqkkawdpwwqbbkhzuzfCUXCqmmpbdpmbwmhkhhddwm0wqpkmdbZbmbdhbqwkwdqmqaah  ║
+║  bqkpaakhqahhwddkkhdkqdwwmbbddpddkddbwhpbZpphbkCuQzUuvmpO0QkapqkqpahpadZmqqpaaaaadwwbbdabQhaaahbZdbd  ║
+║  pbdkaawhpapwhdbhkhhhdappdbdbbwdpphpqhaqbdbwqbhZvzaCuQpmbhkaaqpppbpkdaapbOaahhkdkkahdakk0ZaabppZdpdb  ║
+║  hdkbaaadhdkpqpdkbkhakakdbdpphbpbkkkdaapbqddbahhmmaCYakpdhbaapwkdwkpqpqqwpahdZppbpbpddkdwkaawqqmaqkb  ║
+║  hkhkhaqkbbhqabhhdhhahdqbhhqpddpbbpdqppkpbqhpkkahpahpabwhkpdqwpdwdhkdawmZhhdqpmqdpqhhahqqkaamOZdakkk  ║
+║  dakdaaaahaaaaaaahpadpwbhkkbddpddkbkbqbddpqddhaabZabOZhqbhpppqdqkddbdbbbdbhqqwppwqpkbkkbpddbwqphapqd  ║
+║  kabaaaaaaaaaqaaahahkadbkkdbbhdkppdbbbbbppdOkhaahmadmhadhhppqbpbdkakbbdbhkapmppqZddhhhkkbdkhpqQbadkb  ║
+║  habaaaaaaaaakaakaakhadkabhbkhqhhbbbkbhhpwkhdhhaaqhwqaahhhwbhppbkbhbbdbkkdaZhqkkkaaakhkhkbqbhppwdbbb  ║
+║  hhhaaaaaaaaaaaahahahabkaaaahaaaaakkbkhhkahhhhaaabLZbabahkhbbdbdkkkpaqqhbbaaahhkdqkkhhahbhaadppbakkb  ║
+║  khhaaaaaaaaaaaaahpdhahahahaaahahkhahhahhhhkaaaaaqk0haadhhhakhbkhkkkhhhhkkaabkhhbhkhhaakahaaahdbhhka  ║
+║  hhaaaaaaaaaaaaaaakhhabkbbkkbbkbbkdbdkmmmqqqbhhaaakhahhhbhkdbkhkdqwpbkpqqdpddkdhhhkhhhhaahaaakbkakhh  ║
+║  hhaaaaaaaaaaaaakaahbdddbwwpmqmppmZZZqOpZ0Zmb0bpppqqO0ZZmmpZqpmZZOZmwppmqmqqpmpqqwwpkdbkkkpbbahhahkh  ║
+║                                                                                                       ║
+║                                                                                                       ║
+╚═══════════════════════════════════════════════════════════════════════════════════════════════════════╝
+```
+
+> 28 行 × 99 列纯 CG，不塞说明文字。遇尸体事件时先播放此画面，再进入搜索页。配色：灰白背景、木褐十字架、暗红阴影、骨白高光。
 
 ### 画框标准（CG 绘制用）
 
 **不要自己画外框。** 所有场景的外框由 `Frame` 统一绘制，固定为 **105 列 × 34 行**。画 CG 时只需要画里面的内容区。
 
-| 区域 | 行（1 起） | 列（1 起） | 尺寸 |
-| --- | --- | --- | --- |
-| 外框 | 1–34 | 1–105 | 105 × 34 |
-| 上边框 | 1 | 1–105 | 1 行 |
-| 下边框 | 34 | 1–105 | 1 行 |
-| 左右边框 | 2–33 | 1、105 | 各 1 列 |
-| 上景留白 | 2–3 | 4–102 | 99 × 2 |
-| 中景 / CG 绘制区 | 4–31 | 4–102 | **99 × 28** |
-| 下景留白 | 32–33 | 4–102 | 99 × 2 |
+| 区域          | 行（1 起） | 列（1 起） | 尺寸          |
+| ----------- | ------ | ------ | ----------- |
+| 外框          | 1–34   | 1–105  | 105 × 34    |
+| 上边框         | 1      | 1–105  | 1 行         |
+| 下边框         | 34     | 1–105  | 1 行         |
+| 左右边框        | 2–33   | 1、105  | 各 1 列       |
+| 上景留白        | 2–3    | 4–102  | 99 × 2      |
+| 中景 / CG 绘制区 | 4–31   | 4–102  | **99 × 28** |
+| 下景留白        | 32–33  | 4–102  | 99 × 2      |
 
 横向结构：
 

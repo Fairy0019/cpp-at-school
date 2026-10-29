@@ -1937,7 +1937,78 @@ void Game::handleCorridorCaveIn(int floor, int& nextFloor) {
         "  按回车继续 > ");
 }
 
+void Game::showHangedCorpseCG() const {
+    UI::clearScreen();
+
+    Frame frame;
+    const std::vector<std::string> art = {
+        "hbddbbbbhhhabaahaaaaaaaaaaaaaaaaaaaaaaahaabhhhahhkkhhkkkkbbkkkkbkkhkkkhhkkahhahahhaahaaaaakkppddkbd",
+        "ddhbdkbdkhkakaaaaaaaaaaahhkaaaaaaaaaaaahhabbkhhbdpdbbbpbbpbkbadpbdbdbbkkddaaahkaaahakahhhkkkkdqqhbp",
+        "wdppdhbqkhdhbaakhaaaaaakhkhkhaaaaaaaaaahdkpdddbqmpqwqwqqqpdhkbdmZqpmqpdpbdhhaahkaahhhhkkhbkbpqwmkbb",
+        "dbqpqwpqhkdbdaakdaahaakbkahkkkbhahaaaahbhbpqwpqqOJOmOwqZmkwkbmw0QXOmZqqhqbdbkbkbhdhhhkbbpbkpwbbqmqb",
+        "pppqwpqmkkpbphkbkakhhakkbdbdbbbkhkkkkZphbdqOmqwpLQJZQQOQ0Zmp0qLCciJ0CCQqqppdbbbbhkkkhdbqddkkpmqpwwb",
+        "hbmwqwqOmkwddakpbhbabhbdbdddbddkkkbqbZbkkdmQp0pZQCc0QL0QOXQZC0JvrU|YcZQkmwqqppppbkbdkpddbmdbbQwwOmd",
+        "dq0ZmwwbqkwdqkbddahaaakbdbhkbppdkbwwbqhkdwbZqdZOYYCqLzJXC0Z0UvJYunhOv00LpqkkkddkhkkhbppqkmbbwLOpqZd",
+        "ZwLZLqqwqbwbppmwbddaaakZdOdqbpdpdpmdwmOkdppkOqphUJOmJYQuOUCZmp0zx0hhLLOZwqphhqpddadkqdpZbOkbOOOwqdm",
+        "QmULJCmwpbUbOqbbpbhbakhwpZpLbwqqmwZ0pwwmbQmCJZ0Lm0wZQJQJ0OwwOL0QOpdpqw0ZpkOphdbmwhdbqpwZpmbbqOOmCkm",
+        "cczYCi-wwbZhOpZdwqkhhdbbwQZdwpOqLqLmdZcnmZm00ppqmw0CQ0U0ZQLUfwhkdZqbZmOhkabpahbpwbqwpqZZbZqqZ1ZQLdp",
+        "XYvL~zmQZOmbOOQmdpdhhqqZJmkhwZZQXQ00pphqOLcjzqhkkkChj\\f/zJCkaaaahbdbbbpmpdhwpwOdmZwqkqz0pQwbZiuLjYJ",
+        "00LLahO0Cd0tnjJw+dphqmmZwbqZZwOO+i{cQdhbbwpObpkkhkq\\fkwLmZkaahdhqpdqmbdZpbpkmpOwmZmQX0uYXzC00zzJxYX",
+        "wpQOhq0LUbYUYzJ}YdbqOqwQZZpZqZOJbkuZOLbbhkkbdbqw0OvULqdbkhaqbkZdmdbbppdqhadwwbQC0qpm>0\\vnCC0wqawdqQ",
+        "pdmabhkphppkpUdkpqZwqmqqZdmOdkOmpmwqqpqddmbbahaOQvcULahbbdwdmkOq0mddqdOqkpbm0O0pLq0OhZCOddLCQObhkap",
+        "mkhhbbqdhdbhbp0kqwww00OmkwdbOpdbbbwdZbdqdmqpdhaL0YzcudpqOwqdpqkpdhbbhkw0bwqkmZZOwqbpbphZqmwmwwmadaw",
+        "qqdwhdqbbmqkZpwqdqpdOqqwmwpqbbkhbbbkwqqmmbpkbhhXzCzfYObwwqhaQOdZphpbkkZmmhkmddqdwwkpbhkwmmqw0mmmmhp",
+        "khahaaabdhbhpwqphmOqpwpmqmbdkppdqkkawdpwwqbbkhzuzfCUXCqmmpbdpmbwmhkhhddwm0wqpkmdbZbmbdhbqwkwdqmqaah",
+        "bqkpaakhqahhwddkkhdkqdwwmbbddpddkddbwhpbZpphbkCuQzUuvmpO0QkapqkqpahpadZmqqpaaaaadwwbbdabQhaaahbZdbd",
+        "pbdkaawhpapwhdbhkhhhdappdbdbbwdpphpqhaqbdbwqbhZvzaCuQpmbhkaaqpppbpkdaapbOaahhkdkkahdakk0ZaabppZdpdb",
+        "hdkbaaadhdkpqpdkbkhakakdbdpphbpbkkkdaapbqddbahhmmaCYakpdhbaapwkdwkpqpqqwpahdZppbpbpddkdwkaawqqmaqkb",
+        "hkhkhaqkbbhqabhhdhhahdqbhhqpddpbbpdqppkpbqhpkkahpahpabwhkpdqwpdwdhkdawmZhhdqpmqdpqhhahqqkaamOZdakkk",
+        "dakdaaaahaaaaaaahpadpwbhkkbddpddkbkbqbddpqddhaabZabOZhqbhpppqdqkddbdbbbdbhqqwppwqpkbkkbpddbwqphapqd",
+        "kabaaaaaaaaaqaaahahkadbkkdbbhdkppdbbbbbppdOkhaahmadmhadhhppqbpbdkakbbdbhkapmppqZddhhhkkbdkhpqQbadkb",
+        "habaaaaaaaaakaakaakhadkabhbkhqhhbbbkbhhpwkhdhhaaqhwqaahhhwbhppbkbhbbdbkkdaZhqkkkaaakhkhkbqbhppwdbbb",
+        "hhhaaaaaaaaaaaahahahabkaaaahaaaaakkbkhhkahhhhaaabLZbabahkhbbdbdkkkpaqqhbbaaahhkdqkkhhahbhaadppbakkb",
+        "khhaaaaaaaaaaaaahpdhahahahaaahahkhahhahhhhkaaaaaqk0haadhhhakhbkhkkkhhhhkkaabkhhbhkhhaakahaaahdbhhka",
+        "hhaaaaaaaaaaaaaaakhhabkbbkkbbkbbkdbdkmmmqqqbhhaaakhahhhbhkdbkhkdqwpbkpqqdpddkdhhhkhhhhaahaaakbkakhh",
+        "hhaaaaaaaaaaaaakaahbdddbwwpmqmppmZZZqOpZ0Zmb0bpppqqO0ZZmmpZqpmZZOZmwppmqmqqpmpqqwwpkdbkkkpbbahhahkh"
+    };
+    for (const std::string& line : art) {
+        std::string painted;
+        painted.reserve(line.size() * 24);
+        for (char character : line) {
+            if (character == ' ') {
+                painted += ' ';
+                continue;
+            }
+
+            int red = 190;
+            int green = 170;
+            int blue = 130;
+            if (character == 'a' || character == 'h') {
+                red = 138; green = 133; blue = 120;
+            } else if (character == 'b' || character == 'd' || character == 'k') {
+                red = 107; green = 74; blue = 54;
+            } else if (character == 'p' || character == 'q' ||
+                       character == 'w' || character == 'm') {
+                red = 160; green = 106; blue = 69;
+            } else if (character == 'Z' || character == 'O') {
+                red = 48; green = 18; blue = 22;
+            } else if (character == 'Q' || character == '0') {
+                red = 96; green = 24; blue = 28;
+            } else if (character == 'L' || character == 'C' ||
+                       character == 'J') {
+                red = 216; green = 199; blue = 165;
+            }
+            painted += UI::paintRgb(std::string(1, character), red, green, blue);
+        }
+        frame.addLine(painted);
+    }
+    frame.render();
+
+    UI::waitForEnter(UI::paint("  按回车继续 > ", UI::Color::BrightGreen));
+}
+
 void Game::handleCorridorCorpse() {
+    showHangedCorpseCG();
     UI::clearScreen();
 
     Frame frame;
