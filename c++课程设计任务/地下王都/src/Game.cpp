@@ -745,61 +745,100 @@ void Game::showTitleScreen() const {
     UI::clearScreen();
 
     Frame frame;
-    frame.addBlank();
-
-    constexpr int kInnerWidth = 88;
-    const std::string innerTop =
-        "╔" + repeatText("═", kInnerWidth - 2) + "╗";
-    const std::string innerBlank =
-        "║" + std::string(kInnerWidth - 2, ' ') + "║";
-    const std::string innerBottom =
-        "╚" + repeatText("═", 22) + "╤" + repeatText("═", 40) +
-        "╤" + repeatText("═", 22) + "╝";
-
-    const auto centerInner = [](const std::string& line) {
-        return "   " + line + "   ";
+    const std::vector<std::string> cover = {
+        "╔════════════════════════════════════════════════════════════════════╗",
+        "║                                                                    ║",
+        "║     ╱╲                     沉   没   王   都                      ║",
+        "║    ╔══╗            ╔══╗        ╔══╗        ╔══╗                    ║",
+        "║    ║██║            ║██║        ║██║        ║██║                    ║",
+        "║    ║██║╔═══════════╣██╠════════╣██╠════════╣██╠═══════════╗        ║",
+        "║    ║▪▪║║██  ██  ██  ║██║  ██  ██║██║██  ██  ║██║  ██  ██  ██║        ║",
+        "║    ╚══╝╚═══════════╩══╩════════╩══╩════════╩══╩═══════════╝        ║",
+        "║▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀║",
+        "║▓▓▓▓║██║▓▓▓▓  ║██║  ▓▓▓▓▓▓▓▓▓▓  ║██║  ▓▓▓▓▓▓▓▓▓▓  ║██║  ▓▓▓▓▓▓▓▓▓▓▓▓║",
+        "║░░░░║░░║░░░░  ║██║  ░░░░░░░░░░  ║██║  ░░░░░░░░░░  ║██║  ░░░░░░░░░░░░║",
+        "║▒▒▒▒╚══╝▒▒▒▒  ╚══╝  ▒▒▒▒▒▒▒▒▒▒  ╚══╝  ▒▒▒▒▒▒▒▒▒▒  ╚══╝  ▒▒▒▒▒▒▒▒▒▒▒▒║",
+        "║      ╲   ╳   ╱      ╲   ╳   ╱      ╲   ╳   ╱                  ║",
+        "║        ╲ ╱            ╲ ╱            ╲ ╱                    ║",
+        "║                                                                           ║",
+        "║            כאן טמון זוהר העבר, ועתה נכנסות עצמות חדשות.            ║",
+        "╚════════════════════════════════════════════════════════════════════╝"
     };
 
-    frame.addCentered(UI::fit(UI::paint(centerInner(innerTop), UI::Color::Gray), 94));
-    frame.addCentered(UI::fit(UI::paint(centerInner(innerBlank), UI::Color::Gray), 94));
+    const auto colorCoverLine = [](const std::string& line) {
+        std::string painted;
+        painted.reserve(line.size() * 12);
+        for (std::size_t index = 0; index < line.size();) {
+            const unsigned char first = static_cast<unsigned char>(line[index]);
+            std::size_t bytes = 1;
+            if ((first & 0x80) == 0) {
+                bytes = 1;
+            } else if ((first & 0xE0) == 0xC0) {
+                bytes = 2;
+            } else if ((first & 0xF0) == 0xE0) {
+                bytes = 3;
+            } else {
+                bytes = 4;
+            }
+            const std::string glyph = line.substr(index, bytes);
+            index += bytes;
+            if (glyph == " ") {
+                painted += ' ';
+                continue;
+            }
 
-    std::string titleLine =
-        "   " + UI::paint("║", UI::Color::Gray) +
-        UI::padRight(UI::center(UI::paint("沉   没   王   都",
-                                          UI::Color::BrightYellow, true), 86), 86) +
-        UI::paint("║", UI::Color::Gray) + "   ";
-    frame.addCentered(UI::fit(titleLine, 94));
+            int red = 220;
+            int green = 190;
+            int blue = 120;
+            if (glyph == "█") {
+                red = 42; green = 36; blue = 30;
+            } else if (glyph == "▓") {
+                red = 92; green = 86; blue = 76;
+            } else if (glyph == "░") {
+                red = 150; green = 145; blue = 130;
+            } else if (glyph == "▒") {
+                red = 120; green = 115; blue = 104;
+            } else if (glyph == "▀") {
+                red = 60; green = 55; blue = 48;
+            } else if (glyph == "╱" || glyph == "╲" || glyph == "╳") {
+                red = 100; green = 75; blue = 55;
+            } else if (glyph == "▪") {
+                red = 180; green = 80; blue = 60;
+            } else if (glyph == "╔" || glyph == "╗" || glyph == "╚" ||
+                       glyph == "╝" || glyph == "║" || glyph == "═" ||
+                       glyph == "╠" || glyph == "╣" || glyph == "╩" ||
+                       glyph == "╦" || glyph == "╬" || glyph == "╤" ||
+                       glyph == "╧") {
+                red = 150; green = 150; blue = 140;
+            }
+            painted += UI::paintRgb(glyph, red, green, blue);
+        }
+        return painted;
+    };
 
-    frame.addCentered(UI::fit(UI::paint(centerInner(innerBlank), UI::Color::Gray), 94));
-    frame.addCentered(UI::fit(UI::paint(centerInner(innerBottom), UI::Color::Gray), 94));
-
-    frame.addCentered(UI::fit(UI::paint(
-        "     s    ╲                    ╱          ╲              a     ╱",
-        UI::Color::Gray), 64));
-    frame.addCentered(UI::fit(UI::paint(
-        "   s ` s   ╲      wera        ╱      x     ╲           aa     ╱",
-        UI::Color::Gray), 64));
-    frame.addCentered(UI::fit(UI::paint(
-        "     s      ╲        sdf     ╱       x      ╲            ac  ╱",
-        UI::Color::Gray), 64));
-
-    frame.addCentered(UI::fit(UI::paint(
-        "   ══════════    ═══════════════════════════    ══════════",
-        UI::Color::Gray), 64));
-
-    frame.addCentered(UI::fit(UI::paint(
-        "        as  ╱           asd  ╲        sss   ╱                ╲",
-        UI::Color::Gray), 64));
-    frame.addCentered(UI::fit(UI::paint(
-        "    hf     ╱      adsa        ╲   mki      ╱           o      ╲",
-        UI::Color::Gray), 64));
-    frame.addCentered(UI::fit(UI::paint(
-        "          ╱  k          gsw    ╲          ╱             o      ╲",
-        UI::Color::Gray), 64));
-
-    frame.addCentered(UI::paint("·   古   ·   城   ·   咒   ·   罪   ·   墟   ·",
-                                UI::Color::Gray));
-    frame.addBlank();
+    for (const std::string& raw : cover) {
+        std::string line;
+        if (raw.rfind("╔", 0) == 0) {
+            line = "╔" + repeatText("═", 68) + "╗";
+        } else if (raw.rfind("╚", 0) == 0) {
+            line = "╚" + repeatText("═", 68) + "╝";
+        } else {
+            std::string content = raw;
+            if (content.rfind("║", 0) == 0) {
+                content.erase(0, 3);
+            }
+            if (content.size() >= 3 &&
+                content.compare(content.size() - 3, 3, "║") == 0) {
+                content.erase(content.size() - 3);
+            }
+            content = UI::fit(content, 68);
+            while (!content.empty() && content.back() == ' ') {
+                content.pop_back();
+            }
+            line = "║" + UI::fit(content, 68) + "║";
+        }
+        frame.addCentered(colorCoverLine(line));
+    }
     frame.render();
 
     UI::waitForEnter(UI::paint("  按回车 > ", UI::Color::BrightGreen));
