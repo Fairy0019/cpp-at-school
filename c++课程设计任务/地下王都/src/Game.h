@@ -62,6 +62,7 @@ private:
                    const std::string& message) const;
     void showTavern();
     void showTowerGate();
+    void showTowerLookingUp() const;
     bool showCityGateDialogue();
     void showJournal();
     void unlockJournal(const std::string& id);
