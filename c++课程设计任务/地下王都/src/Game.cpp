@@ -3033,8 +3033,44 @@ void Game::showTowerLookingUp() const {
         "xx       . .: ...:.:::... .:..: .:::::::+++ ++:+xxxxxx:+:+xx+++++. :.   . x",
         "xx   .   . ..:::::++::+++:+++++:++x:xxxx ++xxxxx++++:+++++++++ . ..  .    x"
     };
-    for (const std::string& line : stretchArtToCanvas(art, 99, 28)) {
-        frame.addLine(UI::paint(line, UI::Color::Gray));
+    const std::vector<std::string> canvas = stretchArtToCanvas(art, 99, 28);
+    for (int row = 0; row < static_cast<int>(canvas.size()); ++row) {
+        const std::string& line = canvas[static_cast<std::size_t>(row)];
+        std::string painted;
+        painted.reserve(line.size() * 24);
+        for (int column = 0; column < static_cast<int>(line.size()); ++column) {
+            const char character = line[static_cast<std::size_t>(column)];
+            if (character == ' ') {
+                painted += ' ';
+                continue;
+            }
+
+            int red = 120;
+            int green = 110;
+            int blue = 100;
+            if (character == '.') {
+                red = 205; green = 190; blue = 160;
+            } else if (character == ':') {
+                red = 165; green = 145; blue = 115;
+            } else if (character == '+') {
+                red = 115; green = 88; blue = 62;
+            } else if (character == 'x') {
+                red = 65; green = 48; blue = 34;
+            } else if (character == '#') {
+                red = 28; green = 20; blue = 16;
+            }
+
+            // 参考图左上方有一弯月亮；在塔顶左侧点一小片暖黄。
+            const double moonX = (column - 14) / 5.0;
+            const double moonY = (row - 2) / 3.5;
+            if (character != 'x' && character != '#' &&
+                moonX * moonX + moonY * moonY <= 1.0) {
+                red = 242; green = 226; blue = 170;
+            }
+
+            painted += UI::paintRgb(std::string(1, character), red, green, blue);
+        }
+        frame.addLine(painted);
     }
     frame.render();
 
