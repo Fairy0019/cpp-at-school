@@ -2844,7 +2844,6 @@ void Game::showTowerLookingUp() const {
     UI::clearScreen();
 
     Frame frame;
-    frame.addCentered(UI::paint("高塔 · 仰视", UI::Color::BrightCyan));
     const std::vector<std::string> art = {
         "x       ....     .:+:x...::::::................:..+x+::.+.:: :.. : .   . x ",
         "xx  . .. .:  :.  .x:+x....:::.::.....+.........x...xx::.:. .: ::.::. :    x",
@@ -2875,17 +2874,25 @@ void Game::showTowerLookingUp() const {
     for (const std::string& line : art) {
         frame.addCentered(UI::paint(line, UI::Color::Gray));
     }
-    frame.addCentered(UI::paint("你站在塔底抬头望去，塔身消失在灰烬里。",
-                                UI::Color::Gray));
-    frame.addCentered(UI::paint("入口被灰烬和锁链封住。", UI::Color::Gray));
     frame.render();
 
-    UI::waitForEnter(UI::paint("  按回车返回街道 > ", UI::Color::BrightGreen));
+    UI::waitForEnter(UI::paint("  按回车继续 > ", UI::Color::BrightGreen));
 }
 
 void Game::showTowerGate() {
     unlockJournal("tower.gate");
     showTowerLookingUp();
+
+    // 纯 CG 之后单独播放说明页，CG 本身不再塞说明文字。
+    showStoryPage(
+        "高塔 · 入口",
+        {
+            "你站在塔底抬头望去，塔身消失在灰烬里。",
+            "入口被灰烬和锁链封住，暂时上不去。",
+            "塔顶偶尔有金属反光。这里以后会通向征服骑士。"
+        },
+        UI::Color::Gray,
+        "  按回车返回街道 > ");
 }
 
 void Game::showCampMenu() {
