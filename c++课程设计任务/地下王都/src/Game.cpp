@@ -1980,23 +1980,36 @@ void Game::showHangedCorpseCG() const {
                 continue;
             }
 
-            int red = 180;
-            int green = 150;
-            int blue = 110;
+            int red = 170;
+            int green = 175;
+            int blue = 165;
             if (character == 'a' || character == 'h') {
-                red = 180; green = 174; blue = 160;
+                // 暗绿色石墙
+                red = 47; green = 58; blue = 49;
             } else if (character == 'b' || character == 'd' || character == 'k') {
-                red = 150; green = 125; blue = 100;
+                // 木褐十字架
+                red = 74; green = 58; blue = 40;
             } else if (character == 'p' || character == 'q' ||
                        character == 'w' || character == 'm') {
-                red = 115; green = 85; blue = 62;
+                // 受火的木料与石墙
+                red = 90; green = 74; blue = 52;
             } else if (character == 'Z' || character == 'O') {
-                red = 65; green = 30; blue = 30;
+                // 苍白尸体
+                red = 184; green = 189; blue = 178;
             } else if (character == 'Q' || character == '0') {
-                red = 35; green = 14; blue = 16;
+                // 尸体高光
+                red = 216; green = 220; blue = 210;
             } else if (character == 'L' || character == 'C' ||
                        character == 'J') {
-                red = 220; green = 205; blue = 175;
+                // 骨白与火把附近的高光
+                red = 232; green = 230; blue = 220;
+            } else if (character == '\\' || character == '/' ||
+                       character == '|' || character == '{' ||
+                       character == '}' || character == '>' ||
+                       character == '~' || character == '+' ||
+                       character == '-' || character == '1') {
+                // 火把橙
+                red = 224; green = 144; blue = 58;
             }
             painted += UI::paintRgb(std::string(1, character), red, green, blue);
         }
