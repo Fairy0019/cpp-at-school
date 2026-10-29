@@ -1971,6 +1971,79 @@ void Game::showHangedCorpseCG() const {
         "hhaaaaaaaaaaaaaaakhhabkbbkkbbkbbkdbdkmmmqqqbhhaaakhahhhbhkdbkhkdqwpbkpqqdpddkdhhhkhhhhaahaaakbkakhh",
         "hhaaaaaaaaaaaaakaahbdddbwwpmqmppmZZZqOpZ0Zmb0bpppqqO0ZZmmpZqpmZZOZmwppmqmqqpmpqqwwpkdbkkkpbbahhahkh"
     };
+    struct CorpseTone {
+        int red;
+        int green;
+        int blue;
+    };
+    const auto corpseTone = [](char character) -> CorpseTone {
+        // 火把、绳索和少量高光保留一点暖色。
+        if (character == '\\' || character == '/' || character == '|' ||
+            character == '{' || character == '}' || character == '>' ||
+            character == '~' || character == '+' || character == '-' ||
+            character == '1') {
+            return {188, 118, 54};
+        }
+
+        double density = 0.55;
+        switch (character) {
+            case 'a': density = 0.08; break;
+            case 'h': density = 0.16; break;
+            case 'b': density = 0.26; break;
+            case 'd': density = 0.32; break;
+            case 'k': density = 0.38; break;
+            case 'p': density = 0.46; break;
+            case 'q': density = 0.54; break;
+            case 'w': density = 0.62; break;
+            case 'm': density = 0.68; break;
+            case 'Z': density = 0.78; break;
+            case 'O': density = 0.82; break;
+            case 'Q': density = 0.90; break;
+            case '0': density = 0.95; break;
+            case 'L': density = 0.86; break;
+            case 'C': density = 0.80; break;
+            case 'J': density = 0.78; break;
+            case 'Y': density = 0.74; break;
+            case 'U': density = 0.72; break;
+            default: break;
+        }
+
+        struct Stop {
+            double at;
+            int red;
+            int green;
+            int blue;
+        };
+        static const Stop stops[] = {
+            {0.00, 26, 33, 29},
+            {0.22, 42, 54, 44},
+            {0.42, 64, 60, 46},
+            {0.58, 88, 78, 60},
+            {0.74, 120, 122, 110},
+            {0.88, 158, 160, 148},
+            {1.00, 190, 184, 160}
+        };
+        constexpr int kStopCount = static_cast<int>(sizeof(stops) / sizeof(stops[0]));
+        for (int index = 0; index < kStopCount - 1; ++index) {
+            if (density <= stops[index + 1].at) {
+                const double span = stops[index + 1].at - stops[index].at;
+                const double ratio = span > 0.0
+                                         ? (density - stops[index].at) / span
+                                         : 0.0;
+                return {
+                    stops[index].red +
+                        static_cast<int>((stops[index + 1].red - stops[index].red) * ratio),
+                    stops[index].green +
+                        static_cast<int>((stops[index + 1].green - stops[index].green) * ratio),
+                    stops[index].blue +
+                        static_cast<int>((stops[index + 1].blue - stops[index].blue) * ratio)
+                };
+            }
+        }
+        return {stops[kStopCount - 1].red, stops[kStopCount - 1].green,
+                stops[kStopCount - 1].blue};
+    };
+
     for (const std::string& line : art) {
         std::string painted;
         painted.reserve(line.size() * 24);
@@ -1980,38 +2053,9 @@ void Game::showHangedCorpseCG() const {
                 continue;
             }
 
-            int red = 170;
-            int green = 175;
-            int blue = 165;
-            if (character == 'a' || character == 'h') {
-                // 暗绿色石墙
-                red = 47; green = 58; blue = 49;
-            } else if (character == 'b' || character == 'd' || character == 'k') {
-                // 木褐十字架
-                red = 74; green = 58; blue = 40;
-            } else if (character == 'p' || character == 'q' ||
-                       character == 'w' || character == 'm') {
-                // 受火的木料与石墙
-                red = 90; green = 74; blue = 52;
-            } else if (character == 'Z' || character == 'O') {
-                // 苍白尸体
-                red = 184; green = 189; blue = 178;
-            } else if (character == 'Q' || character == '0') {
-                // 尸体高光
-                red = 216; green = 220; blue = 210;
-            } else if (character == 'L' || character == 'C' ||
-                       character == 'J') {
-                // 骨白与火把附近的高光
-                red = 232; green = 230; blue = 220;
-            } else if (character == '\\' || character == '/' ||
-                       character == '|' || character == '{' ||
-                       character == '}' || character == '>' ||
-                       character == '~' || character == '+' ||
-                       character == '-' || character == '1') {
-                // 火把橙
-                red = 224; green = 144; blue = 58;
-            }
-            painted += UI::paintRgb(std::string(1, character), red, green, blue);
+            const CorpseTone tone = corpseTone(character);
+            painted += UI::paintRgb(std::string(1, character),
+                                    tone.red, tone.green, tone.blue);
         }
         frame.addLine(painted);
     }
