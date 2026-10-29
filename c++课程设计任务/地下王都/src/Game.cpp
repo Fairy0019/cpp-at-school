@@ -575,6 +575,40 @@ std::string repeatText(const std::string& unit, int count) {
     return result;
 }
 
+std::vector<std::string> stretchArtToCanvas(const std::vector<std::string>& art,
+                                            int width, int height) {
+    if (art.empty() || width <= 0 || height <= 0) {
+        return {};
+    }
+
+    int sourceWidth = 0;
+    for (const std::string& line : art) {
+        sourceWidth = std::max(sourceWidth, static_cast<int>(line.size()));
+    }
+    if (sourceWidth <= 0) {
+        return {};
+    }
+
+    std::vector<std::string> result(static_cast<std::size_t>(height));
+    for (int row = 0; row < height; ++row) {
+        const int sourceRow = std::min(
+            static_cast<int>(art.size()) - 1,
+            row * static_cast<int>(art.size()) / height);
+        const std::string& source = art[static_cast<std::size_t>(sourceRow)];
+        result[static_cast<std::size_t>(row)].reserve(
+            static_cast<std::size_t>(width));
+        for (int column = 0; column < width; ++column) {
+            const int sourceColumn = std::min(
+                sourceWidth - 1, column * sourceWidth / width);
+            result[static_cast<std::size_t>(row)] +=
+                sourceColumn < static_cast<int>(source.size())
+                    ? source[static_cast<std::size_t>(sourceColumn)]
+                    : ' ';
+        }
+    }
+    return result;
+}
+
 std::string shopItemLine(int index, const Item& item, bool discounted) {
     int price = item.getPrice();
     if (discounted) {
@@ -2871,8 +2905,8 @@ void Game::showTowerLookingUp() const {
         "xx       . .: ...:.:::... .:..: .:::::::+++ ++:+xxxxxx:+:+xx+++++. :.   . x",
         "xx   .   . ..:::::++::+++:+++++:++x:xxxx ++xxxxx++++:+++++++++ . ..  .    x"
     };
-    for (const std::string& line : art) {
-        frame.addCentered(UI::paint(line, UI::Color::Gray));
+    for (const std::string& line : stretchArtToCanvas(art, 99, 28)) {
+        frame.addLine(UI::paint(line, UI::Color::Gray));
     }
     frame.render();
 
